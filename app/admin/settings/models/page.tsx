@@ -4,19 +4,41 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, FlaskConical, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ANTHROPIC_MODEL_CHOICES, OPENAI_MODEL_CHOICES } from "@/lib/application/enums/model-names";
+import {
+  ANTHROPIC_MODEL_CHOICES,
+  OPENAI_MODEL_CHOICES,
+  OPENROUTER_MODEL_CHOICES,
+} from "@/lib/application/enums/model-names";
 
 type ModelOption = { value: string; label: string };
 type CatalogModel = { id: string; created?: number };
-type ProviderKey = "anthropic" | "openai";
+type ProviderKey = "anthropic" | "openai" | "openrouter";
+
+const PROVIDERS: ProviderKey[] = ["anthropic", "openai", "openrouter"];
 
 const PROVIDER_LABEL: Record<ProviderKey, string> = {
   anthropic: "Anthropic",
   openai: "OpenAI",
+  openrouter: "OpenRouter",
 };
 
+const PROVIDER_ENV_VAR: Record<ProviderKey, string> = {
+  anthropic: "ANTHROPIC_API_KEY",
+  openai: "OPENAI_API_KEY",
+  openrouter: "OPENROUTER_API_KEY",
+};
+
+function emptyByProvider<T>(value: T): Record<ProviderKey, T> {
+  return { anthropic: value, openai: value, openrouter: value };
+}
+
 function seedOptions(provider: ProviderKey): ModelOption[] {
-  const choices = provider === "openai" ? OPENAI_MODEL_CHOICES : ANTHROPIC_MODEL_CHOICES;
+  const choices =
+    provider === "openai"
+      ? OPENAI_MODEL_CHOICES
+      : provider === "openrouter"
+        ? OPENROUTER_MODEL_CHOICES
+        : ANTHROPIC_MODEL_CHOICES;
   return choices.map((o) => ({ value: o.value, label: o.label }));
 }
 
@@ -129,20 +151,20 @@ function messageFromApiError(data: unknown): string {
 export default function ModelsSettingsPage() {
   const [provider, setProvider] = useState<ProviderKey>("anthropic");
   const [model, setModel] = useState("");
-  const [anthropicApiKey, setAnthropicApiKey] = useState("");
-  const [openaiApiKey, setOpenaiApiKey] = useState("");
-  const [keyPresence, setKeyPresence] = useState({ anthropic: false, openai: false });
-  const [catalogs, setCatalogs] = useState<Record<ProviderKey, CatalogModel[]>>({
-    anthropic: [],
-    openai: [],
-  });
-  const [catalogAutoFetched, setCatalogAutoFetched] = useState({ anthropic: false, openai: false });
+  const [apiKeys, setApiKeys] = useState<Record<ProviderKey, string>>(emptyByProvider(""));
+  const [keyPresence, setKeyPresence] = useState<Record<ProviderKey, boolean>>(emptyByProvider(false));
+  const [catalogs, setCatalogs] = useState<Record<ProviderKey, CatalogModel[]>>(
+    emptyByProvider<CatalogModel[]>([])
+  );
+  const [catalogAutoFetched, setCatalogAutoFetched] = useState<Record<ProviderKey, boolean>>(
+    emptyByProvider(false)
+  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [testSuccess, setTestSuccess] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
-  const modelByProviderRef = useRef<Record<ProviderKey, string>>({ anthropic: "", openai: "" });
+  const modelByProviderRef = useRef<Record<ProviderKey, string>>(emptyByProvider(""));
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/settings/models");
@@ -154,14 +176,16 @@ export default function ModelsSettingsPage() {
     const data = await res.json();
     setError(null);
     setTestSuccess(null);
-    const p: ProviderKey = data.provider === "openai" ? "openai" : "anthropic";
-    modelByProviderRef.current.anthropic = pickModel("anthropic", data.anthropic_model);
-    modelByProviderRef.current.openai = pickModel("openai", data.openai_model);
+    const p: ProviderKey = PROVIDERS.includes(data.provider) ? data.provider : "anthropic";
+    for (const key of PROVIDERS) {
+      modelByProviderRef.current[key] = pickModel(key, data[`${key}_model`]);
+    }
     setProvider(p);
     setModel(modelByProviderRef.current[p]);
     setKeyPresence({
       anthropic: Boolean(data.has_anthropic_api_key_stored ?? data.has_api_key_stored),
       openai: Boolean(data.has_openai_api_key_stored),
+      openrouter: Boolean(data.has_openrouter_api_key_stored),
     });
     setLoading(false);
   }, []);
@@ -176,7 +200,7 @@ export default function ModelsSettingsPage() {
       setRefreshing(true);
       setError(null);
       setTestSuccess(null);
-      const apiKey = target === "openai" ? openaiApiKey.trim() : anthropicApiKey.trim();
+      const apiKey = apiKeys[target].trim();
       const res = await fetch(`/api/admin/settings/models/${target}/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -195,7 +219,7 @@ export default function ModelsSettingsPage() {
         [target]: Array.isArray(data.models) ? (data.models as CatalogModel[]) : [],
       }));
     },
-    [anthropicApiKey, openaiApiKey]
+    [apiKeys]
   );
 
   useEffect(() => {
@@ -215,16 +239,16 @@ export default function ModelsSettingsPage() {
     e.preventDefault();
     setError(null);
     setTestSuccess(null);
+    const payload: Record<string, unknown> = { provider };
+    for (const key of PROVIDERS) {
+      payload[`${key}_model`] = key === provider ? model : modelByProviderRef.current[key];
+      const apiKey = apiKeys[key].trim();
+      if (apiKey) payload[`${key}_api_key`] = apiKey;
+    }
     const res = await fetch("/api/admin/settings/models", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        provider,
-        anthropic_model: provider === "anthropic" ? model : modelByProviderRef.current.anthropic,
-        openai_model: provider === "openai" ? model : modelByProviderRef.current.openai,
-        anthropic_api_key: anthropicApiKey.trim() || undefined,
-        openai_api_key: openaiApiKey.trim() || undefined,
-      }),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
@@ -232,12 +256,14 @@ export default function ModelsSettingsPage() {
       return;
     }
     // New/rotated key — allow that provider's catalog to auto-fetch again with it.
-    setCatalogAutoFetched((prev) => ({
-      anthropic: anthropicApiKey.trim() ? false : prev.anthropic,
-      openai: openaiApiKey.trim() ? false : prev.openai,
-    }));
-    setAnthropicApiKey("");
-    setOpenaiApiKey("");
+    setCatalogAutoFetched((prev) => {
+      const next = { ...prev };
+      for (const key of PROVIDERS) {
+        if (apiKeys[key].trim()) next[key] = false;
+      }
+      return next;
+    });
+    setApiKeys(emptyByProvider(""));
     await load();
     setTestSuccess("Saved.");
   }
@@ -246,15 +272,15 @@ export default function ModelsSettingsPage() {
     setTesting(true);
     setError(null);
     setTestSuccess(null);
+    const payload: Record<string, unknown> = { provider, model };
+    for (const key of PROVIDERS) {
+      const apiKey = apiKeys[key].trim();
+      if (apiKey) payload[`${key}_api_key`] = apiKey;
+    }
     const res = await fetch("/api/admin/settings/models/test", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        provider,
-        model,
-        anthropic_api_key: anthropicApiKey.trim() || undefined,
-        openai_api_key: openaiApiKey.trim() || undefined,
-      }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json().catch(() => ({}));
     setTesting(false);
@@ -293,7 +319,7 @@ export default function ModelsSettingsPage() {
               <CardTitle className="text-base">Active chat runtime</CardTitle>
               <CardDescription>
                 These control which LLM runs in production. Changing provider does not remove the
-                other provider&apos;s saved key.
+                other providers&apos; saved keys.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -314,8 +340,11 @@ export default function ModelsSettingsPage() {
                   }}
                   className="w-full h-10 px-3 rounded-lg bg-input border border-border text-sm"
                 >
-                  <option value="anthropic">Anthropic</option>
-                  <option value="openai">OpenAI</option>
+                  {PROVIDERS.map((key) => (
+                    <option key={key} value={key}>
+                      {PROVIDER_LABEL[key]}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -359,81 +388,53 @@ export default function ModelsSettingsPage() {
               <CardTitle className="text-base">Provider API keys</CardTitle>
               <CardDescription>
                 Paste a key only when adding or rotating it. Leave blank to keep the stored value.
-                You can configure both providers, then flip &quot;Active provider&quot; above without
+                You can configure every provider, then flip &quot;Active provider&quot; above without
                 touching keys again.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Anthropic
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {PROVIDERS.map((key) => (
+                  <div
+                    key={key}
+                    className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 space-y-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        {PROVIDER_LABEL[key]}
+                      </p>
+                      {keyPresence[key] ? (
+                        <span className="text-[10px] font-medium uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                          Key stored
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          Not stored
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Used for chat and catalog refresh. Falls back to{" "}
+                      <span className="font-mono">{PROVIDER_ENV_VAR[key]}</span> if empty.
                     </p>
-                    {keyPresence.anthropic ? (
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
-                        Key stored
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Not stored
-                      </span>
-                    )}
+                    <input
+                      type="password"
+                      value={apiKeys[key]}
+                      onChange={(e) => {
+                        setApiKeys((prev) => ({ ...prev, [key]: e.target.value }));
+                        setTestSuccess(null);
+                        setError(null);
+                      }}
+                      autoComplete="off"
+                      className="w-full h-10 px-3 rounded-lg bg-input border border-border text-sm"
+                      placeholder={
+                        keyPresence[key]
+                          ? "Leave blank to keep existing key"
+                          : `Paste ${PROVIDER_LABEL[key]} API key`
+                      }
+                    />
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Used for chat and catalog refresh. Falls back to{" "}
-                    <span className="font-mono">ANTHROPIC_API_KEY</span> if empty.
-                  </p>
-                  <input
-                    type="password"
-                    value={anthropicApiKey}
-                    onChange={(e) => {
-                      setAnthropicApiKey(e.target.value);
-                      setTestSuccess(null);
-                      setError(null);
-                    }}
-                    autoComplete="off"
-                    className="w-full h-10 px-3 rounded-lg bg-input border border-border text-sm"
-                    placeholder={
-                      keyPresence.anthropic ? "Leave blank to keep existing key" : "Paste Anthropic API key"
-                    }
-                  />
-                </div>
-
-                <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      OpenAI
-                    </p>
-                    {keyPresence.openai ? (
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
-                        Key stored
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Not stored
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Used for chat and catalog refresh. Falls back to{" "}
-                    <span className="font-mono">OPENAI_API_KEY</span> if empty.
-                  </p>
-                  <input
-                    type="password"
-                    value={openaiApiKey}
-                    onChange={(e) => {
-                      setOpenaiApiKey(e.target.value);
-                      setTestSuccess(null);
-                      setError(null);
-                    }}
-                    autoComplete="off"
-                    className="w-full h-10 px-3 rounded-lg bg-input border border-border text-sm"
-                    placeholder={
-                      keyPresence.openai ? "Leave blank to keep existing key" : "Paste OpenAI API key"
-                    }
-                  />
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>

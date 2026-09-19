@@ -1,47 +1,57 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/require-role";
-import { ModelProvider, isValidModelForProvider } from "@/lib/application/enums/model-names";
-import { resolveLlmApiKeyFromSettings } from "@/lib/application/runtime/llm-api-key-from-settings";
+import {
+  ModelProvider,
+  isValidModelForProvider,
+  parseModelProvider,
+} from "@/lib/application/enums/model-names";
+import {
+  envApiKeyForProvider,
+  resolveLlmApiKeyFromSettings,
+} from "@/lib/application/runtime/llm-api-key-from-settings";
 import { testLlmConnection } from "@/lib/admin/test-connections";
 
 const schema = z.object({
-  provider: z.enum(["anthropic", "openai"]),
+  provider: z.enum(["anthropic", "openai", "openrouter"]),
   model: z.string().min(1),
-  /** @deprecated Use anthropic_api_key / openai_api_key for the matching provider. */
+  /** @deprecated Use <provider>_api_key for the matching provider. */
   api_key: z.string().optional(),
   anthropic_api_key: z.string().optional(),
   openai_api_key: z.string().optional(),
+  openrouter_api_key: z.string().optional(),
 });
+
+function bodyApiKey(
+  body: z.infer<typeof schema>,
+  provider: ModelProvider
+): string | undefined {
+  switch (provider) {
+    case ModelProvider.Anthropic:
+      return body.anthropic_api_key?.trim();
+    case ModelProvider.OpenAI:
+      return body.openai_api_key?.trim();
+    case ModelProvider.OpenRouter:
+      return body.openrouter_api_key?.trim();
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
     await requireAdmin();
     const body = schema.parse(await req.json());
-    const provider =
-      body.provider === "openai" ? ModelProvider.OpenAI : ModelProvider.Anthropic;
+    const provider = parseModelProvider(body.provider);
 
     if (!isValidModelForProvider(provider, body.model)) {
       return NextResponse.json({ error: "Invalid model for provider" }, { status: 400 });
     }
 
-    let apiKey: string | undefined;
-    if (provider === ModelProvider.Anthropic) {
-      apiKey =
-        body.anthropic_api_key?.trim() ||
-        body.api_key?.trim() ||
-        (await resolveLlmApiKeyFromSettings(provider));
-    } else {
-      apiKey =
-        body.openai_api_key?.trim() ||
-        body.api_key?.trim() ||
-        (await resolveLlmApiKeyFromSettings(provider));
-    }
+    let apiKey: string | undefined =
+      bodyApiKey(body, provider) ||
+      body.api_key?.trim() ||
+      (await resolveLlmApiKeyFromSettings(provider));
     if (!apiKey) {
-      apiKey =
-        provider === ModelProvider.Anthropic
-          ? process.env.ANTHROPIC_API_KEY
-          : process.env.OPENAI_API_KEY;
+      apiKey = envApiKeyForProvider(provider);
     }
     if (!apiKey) {
       return NextResponse.json({ error: "No API key available to test" }, { status: 400 });

@@ -64,8 +64,8 @@ Important variables (see `.env.example` for the full list):
 | `SETTINGS_ENCRYPTION_KEY` | Encrypt AI keys and BigQuery JSON from the admin UI |
 | `ADMIN_EMAIL` | Optional first-boot admin promotion |
 | `ALLOWED_EMAIL_DOMAIN` | Optional signup domain fallback before DB settings |
-| `MODEL_PROVIDER` | `anthropic` or `openai` |
-| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | Provider keys |
+| `MODEL_PROVIDER` | `anthropic`, `openai`, or `openrouter` |
+| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `OPENROUTER_API_KEY` | Provider keys |
 | `BIGQUERY_PROJECT` | Fallback GCP project when a dashboard has no data source |
 | `GOOGLE_APPLICATION_CREDENTIALS_JSON` | Fallback service account JSON (single line) |
 
@@ -116,6 +116,7 @@ Env fallback:
 ```bash
 MODEL_PROVIDER=anthropic   # uses ANTHROPIC_DEFAULT_MODEL
 MODEL_PROVIDER=openai      # uses OPENAI_DEFAULT_MODEL
+MODEL_PROVIDER=openrouter  # uses OPENROUTER_DEFAULT_MODEL — proxies many vendors, one API key
 ```
 
 Admins can also set provider, model, and encrypted API key under **Admin → Settings → Models** (overrides env when configured).

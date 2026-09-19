@@ -6,8 +6,14 @@ import {
   adminGetSetting,
   type DataSourceRow,
 } from "@/lib/supabase/admin-queries";
-import { AnthropicModel, ModelProvider, OPENAI_MODEL_CHOICES } from "../enums/model-names";
-import { resolveLlmApiKeyFromSettings } from "./llm-api-key-from-settings";
+import {
+  AnthropicModel,
+  ModelProvider,
+  OPENAI_MODEL_CHOICES,
+  OPENROUTER_MODEL_CHOICES,
+  parseModelProvider,
+} from "../enums/model-names";
+import { envApiKeyForProvider, resolveLlmApiKeyFromSettings } from "./llm-api-key-from-settings";
 import { getStoredModelForProvider } from "./llm-model-from-settings";
 
 export interface ResolvedChatRuntime {
@@ -23,10 +29,26 @@ export interface ResolvedChatRuntime {
   };
 }
 
-function parseProvider(v: string | null | undefined): ModelProvider {
-  const p = (v ?? process.env.MODEL_PROVIDER ?? "anthropic").toLowerCase();
-  if (p === "openai") return ModelProvider.OpenAI;
-  return ModelProvider.Anthropic;
+function envDefaultModelForProvider(provider: ModelProvider): string {
+  switch (provider) {
+    case ModelProvider.Anthropic:
+      return process.env.ANTHROPIC_DEFAULT_MODEL ?? AnthropicModel.Sonnet4_5;
+    case ModelProvider.OpenAI:
+      return process.env.OPENAI_DEFAULT_MODEL ?? OPENAI_MODEL_CHOICES[0]!.value;
+    case ModelProvider.OpenRouter:
+      return process.env.OPENROUTER_DEFAULT_MODEL ?? OPENROUTER_MODEL_CHOICES[0]!.value;
+  }
+}
+
+function noApiKeyErrorForProvider(provider: ModelProvider): string {
+  switch (provider) {
+    case ModelProvider.Anthropic:
+      return "No Anthropic API key configured (Admin → Models or ANTHROPIC_API_KEY)";
+    case ModelProvider.OpenAI:
+      return "No OpenAI API key configured (Admin → Models or OPENAI_API_KEY)";
+    case ModelProvider.OpenRouter:
+      return "No OpenRouter API key configured (Admin → Models or OPENROUTER_API_KEY)";
+  }
 }
 
 async function resolveBigQueryFromAdmin(dashboard: Dashboard): Promise<{
@@ -62,29 +84,18 @@ async function resolveBigQueryFromAdmin(dashboard: Dashboard): Promise<{
 
 export async function resolveChatRuntime(dashboard: Dashboard): Promise<ResolvedChatRuntime> {
   const ai_provider = await adminGetSetting("ai_provider");
-  const provider = parseProvider(ai_provider);
+  const provider = parseModelProvider(ai_provider);
   const ai_model = await getStoredModelForProvider(provider);
 
   let apiKey = await resolveLlmApiKeyFromSettings(provider);
   if (!apiKey) {
-    apiKey =
-      provider === ModelProvider.Anthropic
-        ? process.env.ANTHROPIC_API_KEY
-        : process.env.OPENAI_API_KEY;
+    apiKey = envApiKeyForProvider(provider);
   }
 
-  const defaultModel =
-    ai_model ??
-    (provider === ModelProvider.Anthropic
-      ? process.env.ANTHROPIC_DEFAULT_MODEL ?? AnthropicModel.Sonnet4_5
-      : process.env.OPENAI_DEFAULT_MODEL ?? OPENAI_MODEL_CHOICES[0]!.value);
+  const defaultModel = ai_model ?? envDefaultModelForProvider(provider);
 
   if (!apiKey) {
-    throw new Error(
-      provider === ModelProvider.Anthropic
-        ? "No Anthropic API key configured (Admin → Models or ANTHROPIC_API_KEY)"
-        : "No OpenAI API key configured (Admin → Models or OPENAI_API_KEY)"
-    );
+    throw new Error(noApiKeyErrorForProvider(provider));
   }
 
   const fromAdmin = await resolveBigQueryFromAdmin(dashboard);

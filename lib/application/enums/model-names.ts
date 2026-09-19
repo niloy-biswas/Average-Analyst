@@ -1,6 +1,15 @@
 export enum ModelProvider {
   Anthropic = "anthropic",
   OpenAI = "openai",
+  OpenRouter = "openrouter",
+}
+
+/** Falls back to `process.env.MODEL_PROVIDER`, then Anthropic, for anything unrecognized. */
+export function parseModelProvider(v: string | null | undefined): ModelProvider {
+  const p = (v ?? process.env.MODEL_PROVIDER ?? "anthropic").toLowerCase();
+  if (p === "openai") return ModelProvider.OpenAI;
+  if (p === "openrouter") return ModelProvider.OpenRouter;
+  return ModelProvider.Anthropic;
 }
 
 export enum AnthropicModel {
@@ -29,6 +38,11 @@ export const OPENAI_MODEL_CHOICES: ReadonlyArray<{ value: OpenAIModel; label: st
   { value: OpenAIModel.gpt5_2, label: "GPT-5.2" },
 ];
 
+/** OpenRouter has no fixed catalog — this is just the pre-refresh placeholder. */
+export const OPENROUTER_MODEL_CHOICES: ReadonlyArray<{ value: string; label: string }> = [
+  { value: "openrouter/auto", label: "Auto (best available)" },
+];
+
 /** Any Claude model id from Anthropic's catalog. */
 export function isAnthropicChatModelId(id: string): boolean {
   return /^claude-/i.test(id.trim());
@@ -48,8 +62,18 @@ export function isOpenAiChatModelId(id: string): boolean {
   return /^(gpt-|o1|o3|o4)/i.test(lower);
 }
 
+/** OpenRouter ids are `vendor/model` (e.g. `anthropic/claude-sonnet-4`, `openrouter/auto`). */
+export function isOpenRouterModelId(id: string): boolean {
+  return /^[a-z0-9._-]+\/[a-z0-9._-]+$/i.test(id.trim());
+}
+
 export function isValidModelForProvider(provider: ModelProvider, modelId: string): boolean {
-  return provider === ModelProvider.Anthropic
-    ? isAnthropicChatModelId(modelId)
-    : isOpenAiChatModelId(modelId);
+  switch (provider) {
+    case ModelProvider.Anthropic:
+      return isAnthropicChatModelId(modelId);
+    case ModelProvider.OpenAI:
+      return isOpenAiChatModelId(modelId);
+    case ModelProvider.OpenRouter:
+      return isOpenRouterModelId(modelId);
+  }
 }

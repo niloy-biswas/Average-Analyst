@@ -3,8 +3,15 @@ import { ModelProvider } from "../enums/model-names";
 
 export function llmModelAppSettingKey(
   provider: ModelProvider
-): "ai_model_anthropic" | "ai_model_openai" {
-  return provider === ModelProvider.Anthropic ? "ai_model_anthropic" : "ai_model_openai";
+): "ai_model_anthropic" | "ai_model_openai" | "ai_model_openrouter" {
+  switch (provider) {
+    case ModelProvider.Anthropic:
+      return "ai_model_anthropic";
+    case ModelProvider.OpenAI:
+      return "ai_model_openai";
+    case ModelProvider.OpenRouter:
+      return "ai_model_openrouter";
+  }
 }
 
 /**

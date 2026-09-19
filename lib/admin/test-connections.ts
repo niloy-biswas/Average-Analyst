@@ -3,7 +3,24 @@ import { ModelProvider } from "@/lib/application/enums/model-names";
 
 /** App-supported OpenAI models are GPT-5.x (reasoning); chat completions use `max_completion_tokens`, not `max_tokens`. */
 async function openAiChatPing(model: string, apiKey: string): Promise<void> {
-  const url = "https://api.openai.com/v1/chat/completions";
+  await chatCompletionsPing("https://api.openai.com/v1/chat/completions", model, apiKey, {
+    max_completion_tokens: 16,
+  });
+}
+
+/** OpenRouter proxies many vendors behind one OpenAI-compatible endpoint. */
+async function openRouterChatPing(model: string, apiKey: string): Promise<void> {
+  await chatCompletionsPing("https://openrouter.ai/api/v1/chat/completions", model, apiKey, {
+    max_tokens: 16,
+  });
+}
+
+async function chatCompletionsPing(
+  url: string,
+  model: string,
+  apiKey: string,
+  extra: Record<string, unknown>
+): Promise<void> {
   const res = await fetch(url, {
     method: "POST",
     headers: {
@@ -12,7 +29,7 @@ async function openAiChatPing(model: string, apiKey: string): Promise<void> {
     },
     body: JSON.stringify({
       model,
-      max_completion_tokens: 16,
+      ...extra,
       messages: [{ role: "user" as const, content: "ping" }],
     }),
   });
@@ -73,6 +90,11 @@ export async function testLlmConnection(
       const t = await res.text();
       throw new Error(t.slice(0, 400));
     }
+    return;
+  }
+
+  if (provider === ModelProvider.OpenRouter) {
+    await openRouterChatPing(model, apiKey);
     return;
   }
 

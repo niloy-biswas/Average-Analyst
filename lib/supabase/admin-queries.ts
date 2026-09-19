@@ -454,6 +454,7 @@ export async function adminGetWorkspaceOverviewStats(): Promise<AdminWorkspaceOv
     providerRes,
     anthropicModelRes,
     openaiModelRes,
+    openrouterModelRes,
     legacyModelRes,
     topRpc,
   ] = await Promise.all([
@@ -466,6 +467,7 @@ export async function adminGetWorkspaceOverviewStats(): Promise<AdminWorkspaceOv
     admin.from("app_settings").select("value").eq("key", "ai_provider").maybeSingle(),
     admin.from("app_settings").select("value").eq("key", "ai_model_anthropic").maybeSingle(),
     admin.from("app_settings").select("value").eq("key", "ai_model_openai").maybeSingle(),
+    admin.from("app_settings").select("value").eq("key", "ai_model_openrouter").maybeSingle(),
     // Pre-migration single value; fallback only, for installs that haven't re-saved since.
     admin.from("app_settings").select("value").eq("key", "ai_model").maybeSingle(),
     admin.rpc("admin_top_dashboards_by_messages", { p_limit: 3 }),
@@ -492,7 +494,9 @@ export async function adminGetWorkspaceOverviewStats(): Promise<AdminWorkspaceOv
     ai_model:
       (providerRes.data?.value === "openai"
         ? openaiModelRes.data?.value
-        : anthropicModelRes.data?.value) ??
+        : providerRes.data?.value === "openrouter"
+          ? openrouterModelRes.data?.value
+          : anthropicModelRes.data?.value) ??
       legacyModelRes.data?.value ??
       null,
     top_dashboards_by_messages,
