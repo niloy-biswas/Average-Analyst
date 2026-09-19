@@ -52,6 +52,7 @@ export interface ChatMessage {
   createdAt: string;
   isStreaming?: boolean;
   hasError?: boolean;
+  errorMessage?: string;
   thinkingState?: "thinking" | "querying" | null;
   reaction?: "liked" | "disliked" | null;
   feedback?: string | null;

@@ -378,7 +378,12 @@ export function ChatMessageBubble({ message, readOnly = false }: ChatMessageProp
               {message.hasError && (
                 <div className="flex items-start gap-2 mt-3 px-3 py-2.5 rounded-xl bg-destructive/10 border border-destructive/25 text-destructive text-xs">
                   <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                  <span>Something went wrong while running the query. Please try rephrasing your question or try again.</span>
+                  <div>
+                    <span>Something went wrong while running the query. Please try rephrasing your question or try again.</span>
+                    {message.errorMessage && (
+                      <div className="mt-1 font-mono opacity-80 break-words">{message.errorMessage}</div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
