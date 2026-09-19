@@ -155,10 +155,10 @@ export default function ModelsSettingsPage() {
     setError(null);
     setTestSuccess(null);
     const p: ProviderKey = data.provider === "openai" ? "openai" : "anthropic";
-    const initialModel = pickModel(p, data.model);
+    modelByProviderRef.current.anthropic = pickModel("anthropic", data.anthropic_model);
+    modelByProviderRef.current.openai = pickModel("openai", data.openai_model);
     setProvider(p);
-    setModel(initialModel);
-    modelByProviderRef.current[p] = initialModel;
+    setModel(modelByProviderRef.current[p]);
     setKeyPresence({
       anthropic: Boolean(data.has_anthropic_api_key_stored ?? data.has_api_key_stored),
       openai: Boolean(data.has_openai_api_key_stored),
@@ -220,7 +220,8 @@ export default function ModelsSettingsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         provider,
-        model,
+        anthropic_model: provider === "anthropic" ? model : modelByProviderRef.current.anthropic,
+        openai_model: provider === "openai" ? model : modelByProviderRef.current.openai,
         anthropic_api_key: anthropicApiKey.trim() || undefined,
         openai_api_key: openaiApiKey.trim() || undefined,
       }),

@@ -8,6 +8,10 @@ import {
   getEncryptedLlmApiKeyBlobForProvider,
   llmApiKeyAppSettingKey,
 } from "@/lib/application/runtime/llm-api-key-from-settings";
+import {
+  getStoredModelForProvider,
+  llmModelAppSettingKey,
+} from "@/lib/application/runtime/llm-model-from-settings";
 
 function toModelProvider(p: string | null | undefined): ModelProvider {
   return p === "openai" ? ModelProvider.OpenAI : ModelProvider.Anthropic;
@@ -16,19 +20,39 @@ function toModelProvider(p: string | null | undefined): ModelProvider {
 const saveSchema = z
   .object({
     provider: z.enum(["anthropic", "openai"]),
-    model: z.string().min(1),
+    anthropic_model: z.string().optional(),
+    openai_model: z.string().optional(),
     /** @deprecated Prefer anthropic_api_key / openai_api_key so both providers can be configured at once. */
     api_key: z.string().optional(),
     anthropic_api_key: z.string().optional(),
     openai_api_key: z.string().optional(),
   })
   .superRefine((data, ctx) => {
-    const p = data.provider === "openai" ? ModelProvider.OpenAI : ModelProvider.Anthropic;
-    if (!isValidModelForProvider(p, data.model)) {
+    const activeModel =
+      data.provider === "openai" ? data.openai_model?.trim() : data.anthropic_model?.trim();
+    if (!activeModel) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Model must be one of the options for the selected provider",
-        path: ["model"],
+        message: "A model is required for the active provider",
+        path: [data.provider === "openai" ? "openai_model" : "anthropic_model"],
+      });
+    }
+
+    const anthropicModel = data.anthropic_model?.trim();
+    if (anthropicModel && !isValidModelForProvider(ModelProvider.Anthropic, anthropicModel)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Model must be a valid Anthropic model id",
+        path: ["anthropic_model"],
+      });
+    }
+
+    const openaiModel = data.openai_model?.trim();
+    if (openaiModel && !isValidModelForProvider(ModelProvider.OpenAI, openaiModel)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Model must be a valid OpenAI model id",
+        path: ["openai_model"],
       });
     }
   });
@@ -37,19 +61,23 @@ export async function GET() {
   try {
     await requireAdmin();
     const providerRaw = await adminGetSetting("ai_provider");
-    const model = await adminGetSetting("ai_model");
+    const anthropicModel = await getStoredModelForProvider(ModelProvider.Anthropic);
+    const openaiModel = await getStoredModelForProvider(ModelProvider.OpenAI);
     const providerEnum = toModelProvider(providerRaw ?? process.env.MODEL_PROVIDER);
     const hasAnthropic = Boolean(await getEncryptedLlmApiKeyBlobForProvider(ModelProvider.Anthropic));
     const hasOpenai = Boolean(await getEncryptedLlmApiKeyBlobForProvider(ModelProvider.OpenAI));
     const hasKey = Boolean(await getEncryptedLlmApiKeyBlobForProvider(providerEnum));
+    const activeModel =
+      (providerEnum === ModelProvider.OpenAI ? openaiModel : anthropicModel) ??
+      (providerEnum === ModelProvider.OpenAI
+        ? process.env.OPENAI_DEFAULT_MODEL
+        : process.env.ANTHROPIC_DEFAULT_MODEL) ??
+      "";
     return NextResponse.json({
       provider: providerRaw ?? process.env.MODEL_PROVIDER ?? "anthropic",
-      model:
-        model ??
-        (providerEnum === ModelProvider.OpenAI
-          ? process.env.OPENAI_DEFAULT_MODEL
-          : process.env.ANTHROPIC_DEFAULT_MODEL) ??
-        "",
+      model: activeModel,
+      anthropic_model: anthropicModel ?? "",
+      openai_model: openaiModel ?? "",
       has_api_key_stored: hasKey,
       has_anthropic_api_key_stored: hasAnthropic,
       has_openai_api_key_stored: hasOpenai,
@@ -70,7 +98,15 @@ export async function POST(req: NextRequest) {
     const body = saveSchema.parse(await req.json());
 
     await adminUpsertSetting("ai_provider", body.provider);
-    await adminUpsertSetting("ai_model", body.model);
+    if (body.anthropic_model?.trim()) {
+      await adminUpsertSetting(
+        llmModelAppSettingKey(ModelProvider.Anthropic),
+        body.anthropic_model.trim()
+      );
+    }
+    if (body.openai_model?.trim()) {
+      await adminUpsertSetting(llmModelAppSettingKey(ModelProvider.OpenAI), body.openai_model.trim());
+    }
 
     const keyAnth = body.anthropic_api_key?.trim();
     const keyOpen = body.openai_api_key?.trim();

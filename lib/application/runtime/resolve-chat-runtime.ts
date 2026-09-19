@@ -8,6 +8,7 @@ import {
 } from "@/lib/supabase/admin-queries";
 import { AnthropicModel, ModelProvider, OPENAI_MODEL_CHOICES } from "../enums/model-names";
 import { resolveLlmApiKeyFromSettings } from "./llm-api-key-from-settings";
+import { getStoredModelForProvider } from "./llm-model-from-settings";
 
 export interface ResolvedChatRuntime {
   llm: {
@@ -61,9 +62,8 @@ async function resolveBigQueryFromAdmin(dashboard: Dashboard): Promise<{
 
 export async function resolveChatRuntime(dashboard: Dashboard): Promise<ResolvedChatRuntime> {
   const ai_provider = await adminGetSetting("ai_provider");
-  const ai_model = await adminGetSetting("ai_model");
-
   const provider = parseProvider(ai_provider);
+  const ai_model = await getStoredModelForProvider(provider);
 
   let apiKey = await resolveLlmApiKeyFromSettings(provider);
   if (!apiKey) {
