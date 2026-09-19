@@ -10,5 +10,8 @@ export function createOpenAILLM(model?: string, apiKeyOverride?: string): ChatOp
     model: model ?? process.env.OPENAI_DEFAULT_MODEL ?? OPENAI_MODEL_CHOICES[0]!.value,
     apiKey,
     streaming: true,
+    // Reasoning models reject function tools on /v1/chat/completions unless reasoning is off.
+    // This app always binds BigQuery tools, so disable reasoning effort for OpenAI models.
+    reasoning: { effort: "none" },
   });
 }
