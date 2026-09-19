@@ -9,7 +9,7 @@ type WireChunk =
   | { type: "item"; content: string }
   | { type: "tool_start"; tool: string; input: Record<string, unknown> }
   | { type: "tool_end"; tool: string; output: string; isError?: boolean }
-  | { type: "error" };
+  | { type: "error"; message?: string };
 
 function toolOutputToString(raw: unknown): { output: string; isError: boolean } {
   if (raw == null) return { output: "", isError: false };
@@ -122,7 +122,7 @@ export async function streamAgentResponse(
         }
       } catch (err) {
         console.error("Agent stream error:", err);
-        emit({ type: "error" });
+        emit({ type: "error", message: toolErrorToString(err) });
       } finally {
         await opik.flushAsync();
         controller.close();

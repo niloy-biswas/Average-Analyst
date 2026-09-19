@@ -1,22 +1,129 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { FlaskConical } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, FlaskConical, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ANTHROPIC_MODEL_CHOICES,
   OPENAI_MODEL_CHOICES,
+  OPENROUTER_MODEL_CHOICES,
 } from "@/lib/application/enums/model-names";
 
-function modelChoices(provider: string) {
-  return provider === "openai" ? OPENAI_MODEL_CHOICES : ANTHROPIC_MODEL_CHOICES;
+type ModelOption = { value: string; label: string };
+type CatalogModel = { id: string; created?: number };
+type ProviderKey = "anthropic" | "openai" | "openrouter";
+
+const PROVIDERS: ProviderKey[] = ["anthropic", "openai", "openrouter"];
+
+const PROVIDER_LABEL: Record<ProviderKey, string> = {
+  anthropic: "Anthropic",
+  openai: "OpenAI",
+  openrouter: "OpenRouter",
+};
+
+const PROVIDER_ENV_VAR: Record<ProviderKey, string> = {
+  anthropic: "ANTHROPIC_API_KEY",
+  openai: "OPENAI_API_KEY",
+  openrouter: "OPENROUTER_API_KEY",
+};
+
+function emptyByProvider<T>(value: T): Record<ProviderKey, T> {
+  return { anthropic: value, openai: value, openrouter: value };
 }
 
-function pickValidModel(provider: string, fromServer: string | undefined): string {
-  const opts = modelChoices(provider);
+function seedOptions(provider: ProviderKey): ModelOption[] {
+  const choices =
+    provider === "openai"
+      ? OPENAI_MODEL_CHOICES
+      : provider === "openrouter"
+        ? OPENROUTER_MODEL_CHOICES
+        : ANTHROPIC_MODEL_CHOICES;
+  return choices.map((o) => ({ value: o.value, label: o.label }));
+}
+
+function pickModel(provider: ProviderKey, fromServer: string | undefined): string {
   const candidate = (fromServer ?? "").trim();
-  return opts.some((o) => o.value === candidate) ? candidate : opts[0]!.value;
+  if (candidate) return candidate;
+  return seedOptions(provider)[0]?.value ?? "";
+}
+
+function defaultModelFor(provider: ProviderKey, catalog: CatalogModel[]): string {
+  if (catalog.length > 0) return catalog[0]!.id;
+  return seedOptions(provider)[0]?.value ?? "";
+}
+
+function ModelCombobox({
+  options,
+  value,
+  onChange,
+}: {
+  options: ModelOption[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((o) => o.value.toLowerCase().includes(q));
+  }, [options, query]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative"
+      onBlur={(e) => {
+        if (!containerRef.current?.contains(e.relatedTarget as Node | null)) {
+          setOpen(false);
+          setQuery("");
+        }
+      }}
+    >
+      <input
+        value={open ? query : value}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          if (!open) setOpen(true);
+        }}
+        onFocus={() => {
+          setOpen(true);
+          setQuery("");
+        }}
+        placeholder="Search model IDs…"
+        autoComplete="off"
+        className="w-full h-10 px-3 rounded-lg bg-input border border-border text-sm font-mono"
+      />
+      {open ? (
+        <div className="absolute z-10 mt-1 w-full max-h-64 overflow-y-auto rounded-lg border border-border bg-popover shadow-lg">
+          {filtered.length === 0 ? (
+            <p className="px-3 py-2.5 text-sm text-muted-foreground">No models match &quot;{query}&quot;.</p>
+          ) : (
+            filtered.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => {
+                  onChange(o.value);
+                  setOpen(false);
+                  setQuery("");
+                }}
+                className={`flex w-full items-center gap-2 text-left px-3 py-2 text-sm font-mono hover:bg-muted/60 ${
+                  o.value === value ? "bg-muted/40 text-foreground" : "text-foreground"
+                }`}
+              >
+                <Check className={`size-3.5 shrink-0 ${o.value === value ? "opacity-100" : "opacity-0"}`} />
+                <span className="truncate">{o.value}</span>
+              </button>
+            ))
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function messageFromApiError(data: unknown): string {
@@ -42,15 +149,22 @@ function messageFromApiError(data: unknown): string {
 }
 
 export default function ModelsSettingsPage() {
-  const [provider, setProvider] = useState("anthropic");
+  const [provider, setProvider] = useState<ProviderKey>("anthropic");
   const [model, setModel] = useState("");
-  const [anthropicApiKey, setAnthropicApiKey] = useState("");
-  const [openaiApiKey, setOpenaiApiKey] = useState("");
-  const [keyPresence, setKeyPresence] = useState({ anthropic: false, openai: false });
+  const [apiKeys, setApiKeys] = useState<Record<ProviderKey, string>>(emptyByProvider(""));
+  const [keyPresence, setKeyPresence] = useState<Record<ProviderKey, boolean>>(emptyByProvider(false));
+  const [catalogs, setCatalogs] = useState<Record<ProviderKey, CatalogModel[]>>(
+    emptyByProvider<CatalogModel[]>([])
+  );
+  const [catalogAutoFetched, setCatalogAutoFetched] = useState<Record<ProviderKey, boolean>>(
+    emptyByProvider(false)
+  );
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [testSuccess, setTestSuccess] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
+  const modelByProviderRef = useRef<Record<ProviderKey, string>>(emptyByProvider(""));
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/settings/models");
@@ -62,12 +176,16 @@ export default function ModelsSettingsPage() {
     const data = await res.json();
     setError(null);
     setTestSuccess(null);
-    const p = data.provider ?? "anthropic";
+    const p: ProviderKey = PROVIDERS.includes(data.provider) ? data.provider : "anthropic";
+    for (const key of PROVIDERS) {
+      modelByProviderRef.current[key] = pickModel(key, data[`${key}_model`]);
+    }
     setProvider(p);
-    setModel(pickValidModel(p, data.model));
+    setModel(modelByProviderRef.current[p]);
     setKeyPresence({
       anthropic: Boolean(data.has_anthropic_api_key_stored ?? data.has_api_key_stored),
       openai: Boolean(data.has_openai_api_key_stored),
+      openrouter: Boolean(data.has_openrouter_api_key_stored),
     });
     setLoading(false);
   }, []);
@@ -77,43 +195,92 @@ export default function ModelsSettingsPage() {
     void load();
   }, [load]);
 
+  const handleRefreshCatalog = useCallback(
+    async (target: ProviderKey) => {
+      setRefreshing(true);
+      setError(null);
+      setTestSuccess(null);
+      const apiKey = apiKeys[target].trim();
+      const res = await fetch(`/api/admin/settings/models/${target}/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          [`${target}_api_key`]: apiKey || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setRefreshing(false);
+      if (!res.ok) {
+        setError(messageFromApiError(data));
+        return;
+      }
+      setCatalogs((prev) => ({
+        ...prev,
+        [target]: Array.isArray(data.models) ? (data.models as CatalogModel[]) : [],
+      }));
+    },
+    [apiKeys]
+  );
+
+  useEffect(() => {
+    if (
+      keyPresence[provider] &&
+      catalogs[provider].length === 0 &&
+      !catalogAutoFetched[provider] &&
+      !refreshing
+    ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot catalog fetch when a provider becomes active
+      setCatalogAutoFetched((prev) => ({ ...prev, [provider]: true }));
+      void handleRefreshCatalog(provider);
+    }
+  }, [provider, keyPresence, catalogs, catalogAutoFetched, refreshing, handleRefreshCatalog]);
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setTestSuccess(null);
+    const payload: Record<string, unknown> = { provider };
+    for (const key of PROVIDERS) {
+      payload[`${key}_model`] = key === provider ? model : modelByProviderRef.current[key];
+      const apiKey = apiKeys[key].trim();
+      if (apiKey) payload[`${key}_api_key`] = apiKey;
+    }
     const res = await fetch("/api/admin/settings/models", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        provider,
-        model,
-        anthropic_api_key: anthropicApiKey.trim() || undefined,
-        openai_api_key: openaiApiKey.trim() || undefined,
-      }),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
       setError(messageFromApiError(j));
       return;
     }
-    setAnthropicApiKey("");
-    setOpenaiApiKey("");
+    // New/rotated key — allow that provider's catalog to auto-fetch again with it.
+    setCatalogAutoFetched((prev) => {
+      const next = { ...prev };
+      for (const key of PROVIDERS) {
+        if (apiKeys[key].trim()) next[key] = false;
+      }
+      return next;
+    });
+    setApiKeys(emptyByProvider(""));
     await load();
+    setTestSuccess("Saved.");
   }
 
   async function handleTest() {
     setTesting(true);
     setError(null);
     setTestSuccess(null);
+    const payload: Record<string, unknown> = { provider, model };
+    for (const key of PROVIDERS) {
+      const apiKey = apiKeys[key].trim();
+      if (apiKey) payload[`${key}_api_key`] = apiKey;
+    }
     const res = await fetch("/api/admin/settings/models/test", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        provider,
-        model,
-        anthropic_api_key: anthropicApiKey.trim() || undefined,
-        openai_api_key: openaiApiKey.trim() || undefined,
-      }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json().catch(() => ({}));
     setTesting(false);
@@ -121,12 +288,17 @@ export default function ModelsSettingsPage() {
       setError(messageFromApiError(data));
       return;
     }
-    setTestSuccess(
-      `Connected — ${provider === "openai" ? "OpenAI" : "Anthropic"} accepted a request for model ${model}.`
-    );
+    setTestSuccess(`Connected — ${PROVIDER_LABEL[provider]} accepted a request for model ${model}.`);
   }
 
-  const modelOptions = modelChoices(provider);
+  const activeCatalog = catalogs[provider];
+  let modelOptions: ModelOption[] =
+    activeCatalog.length > 0
+      ? activeCatalog.map((c) => ({ value: c.id, label: c.id }))
+      : seedOptions(provider);
+  if (model.trim() && !modelOptions.some((o) => o.value === model)) {
+    modelOptions = [{ value: model, label: model }, ...modelOptions];
+  }
 
   return (
     <div className="w-full space-y-8">
@@ -142,12 +314,12 @@ export default function ModelsSettingsPage() {
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
         <form onSubmit={handleSave} className="space-y-6">
-          <Card>
+          <Card className="overflow-visible">
             <CardHeader>
               <CardTitle className="text-base">Active chat runtime</CardTitle>
               <CardDescription>
                 These control which LLM runs in production. Changing provider does not remove the
-                other provider&apos;s saved key.
+                other providers&apos; saved keys.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -158,41 +330,55 @@ export default function ModelsSettingsPage() {
                 <select
                   value={provider}
                   onChange={(e) => {
-                    const next = e.target.value;
+                    const next = e.target.value as ProviderKey;
                     setTestSuccess(null);
                     setError(null);
                     setProvider(next);
-                    setModel((prev) => {
-                      const opts = modelChoices(next);
-                      return opts.some((o) => o.value === prev) ? prev : opts[0]!.value;
-                    });
+                    setModel(
+                      modelByProviderRef.current[next] || defaultModelFor(next, catalogs[next])
+                    );
                   }}
                   className="w-full h-10 px-3 rounded-lg bg-input border border-border text-sm"
                 >
-                  <option value="anthropic">Anthropic</option>
-                  <option value="openai">OpenAI</option>
+                  {PROVIDERS.map((key) => (
+                    <option key={key} value={key}>
+                      {PROVIDER_LABEL[key]}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Model for active provider
-                </label>
-                <select
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Model for active provider
+                  </label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={refreshing}
+                    onClick={() => void handleRefreshCatalog(provider)}
+                  >
+                    <RefreshCw className={`size-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                    {refreshing ? "Refreshing…" : `Refresh from ${PROVIDER_LABEL[provider]}`}
+                  </Button>
+                </div>
+                <ModelCombobox
+                  options={modelOptions}
                   value={model}
-                  onChange={(e) => {
-                    setModel(e.target.value);
+                  onChange={(v) => {
+                    setModel(v);
+                    modelByProviderRef.current[provider] = v;
                     setTestSuccess(null);
                     setError(null);
                   }}
-                  className="w-full h-10 px-3 rounded-lg bg-input border border-border text-sm font-mono"
-                >
-                  {modelOptions.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label} ({o.value})
-                    </option>
-                  ))}
-                </select>
+                />
+                <p className="text-xs text-muted-foreground">
+                  {activeCatalog.length > 0
+                    ? `${activeCatalog.length} models from your ${PROVIDER_LABEL[provider]} account.`
+                    : `Add a ${PROVIDER_LABEL[provider]} key and refresh to list every model on your account.`}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -202,88 +388,65 @@ export default function ModelsSettingsPage() {
               <CardTitle className="text-base">Provider API keys</CardTitle>
               <CardDescription>
                 Paste a key only when adding or rotating it. Leave blank to keep the stored value.
-                You can configure both providers, then flip &quot;Active provider&quot; above without
+                You can configure every provider, then flip &quot;Active provider&quot; above without
                 touching keys again.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Anthropic
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {PROVIDERS.map((key) => (
+                  <div
+                    key={key}
+                    className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 space-y-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        {PROVIDER_LABEL[key]}
+                      </p>
+                      {keyPresence[key] ? (
+                        <span className="text-[10px] font-medium uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                          Key stored
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          Not stored
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Used for chat and catalog refresh. Falls back to{" "}
+                      <span className="font-mono">{PROVIDER_ENV_VAR[key]}</span> if empty.
                     </p>
-                    {keyPresence.anthropic ? (
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
-                        Key stored
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Not stored
-                      </span>
-                    )}
+                    <input
+                      type="password"
+                      value={apiKeys[key]}
+                      onChange={(e) => {
+                        setApiKeys((prev) => ({ ...prev, [key]: e.target.value }));
+                        setTestSuccess(null);
+                        setError(null);
+                      }}
+                      autoComplete="off"
+                      className="w-full h-10 px-3 rounded-lg bg-input border border-border text-sm"
+                      placeholder={
+                        keyPresence[key]
+                          ? "Leave blank to keep existing key"
+                          : `Paste ${PROVIDER_LABEL[key]} API key`
+                      }
+                    />
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    One key for all Claude models. Falls back to{" "}
-                    <span className="font-mono">ANTHROPIC_API_KEY</span> if empty.
-                  </p>
-                  <input
-                    type="password"
-                    value={anthropicApiKey}
-                    onChange={(e) => {
-                      setAnthropicApiKey(e.target.value);
-                      setTestSuccess(null);
-                      setError(null);
-                    }}
-                    autoComplete="off"
-                    className="w-full h-10 px-3 rounded-lg bg-input border border-border text-sm"
-                    placeholder={
-                      keyPresence.anthropic ? "Leave blank to keep existing key" : "Paste Anthropic API key"
-                    }
-                  />
-                </div>
-
-                <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      OpenAI
-                    </p>
-                    {keyPresence.openai ? (
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
-                        Key stored
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Not stored
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    One key for all listed OpenAI models. Falls back to{" "}
-                    <span className="font-mono">OPENAI_API_KEY</span> if empty.
-                  </p>
-                  <input
-                    type="password"
-                    value={openaiApiKey}
-                    onChange={(e) => {
-                      setOpenaiApiKey(e.target.value);
-                      setTestSuccess(null);
-                      setError(null);
-                    }}
-                    autoComplete="off"
-                    className="w-full h-10 px-3 rounded-lg bg-input border border-border text-sm"
-                    placeholder={
-                      keyPresence.openai ? "Leave blank to keep existing key" : "Paste OpenAI API key"
-                    }
-                  />
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>
 
           <div className="flex flex-wrap gap-2">
             <Button type="submit">Save</Button>
-            <Button type="button" variant="outline" disabled={testing} onClick={handleTest}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={testing || !model}
+              onClick={() => void handleTest()}
+            >
               <FlaskConical className="size-3.5" />
               {testing ? "Testing…" : "Test active connection"}
             </Button>

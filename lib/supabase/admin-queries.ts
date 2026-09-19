@@ -452,7 +452,10 @@ export async function adminGetWorkspaceOverviewStats(): Promise<AdminWorkspaceOv
     chat_sessions,
     chat_messages,
     providerRes,
-    modelRes,
+    anthropicModelRes,
+    openaiModelRes,
+    openrouterModelRes,
+    legacyModelRes,
     topRpc,
   ] = await Promise.all([
     countRows("dashboards", { column: "status", value: "published" }),
@@ -462,6 +465,10 @@ export async function adminGetWorkspaceOverviewStats(): Promise<AdminWorkspaceOv
     countRows("chat_sessions"),
     countRows("chat_messages"),
     admin.from("app_settings").select("value").eq("key", "ai_provider").maybeSingle(),
+    admin.from("app_settings").select("value").eq("key", "ai_model_anthropic").maybeSingle(),
+    admin.from("app_settings").select("value").eq("key", "ai_model_openai").maybeSingle(),
+    admin.from("app_settings").select("value").eq("key", "ai_model_openrouter").maybeSingle(),
+    // Pre-migration single value; fallback only, for installs that haven't re-saved since.
     admin.from("app_settings").select("value").eq("key", "ai_model").maybeSingle(),
     admin.rpc("admin_top_dashboards_by_messages", { p_limit: 3 }),
   ]);
@@ -484,7 +491,14 @@ export async function adminGetWorkspaceOverviewStats(): Promise<AdminWorkspaceOv
     chat_sessions,
     chat_messages,
     ai_provider: providerRes.data?.value ?? null,
-    ai_model: modelRes.data?.value ?? null,
+    ai_model:
+      (providerRes.data?.value === "openai"
+        ? openaiModelRes.data?.value
+        : providerRes.data?.value === "openrouter"
+          ? openrouterModelRes.data?.value
+          : anthropicModelRes.data?.value) ??
+      legacyModelRes.data?.value ??
+      null,
     top_dashboards_by_messages,
   };
 }

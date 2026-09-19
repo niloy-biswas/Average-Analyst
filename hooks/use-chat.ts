@@ -164,6 +164,7 @@ export function useChat(initialMessages: ChatMessage[] = []) {
                 input?: Record<string, unknown>;
                 output?: string;
                 isError?: boolean;
+                message?: string;
               };
 
               if (chunk.type === "tool_start" && chunk.tool) {
@@ -225,7 +226,14 @@ export function useChat(initialMessages: ChatMessage[] = []) {
                 setMessages((prev) =>
                   prev.map((m) =>
                     m.id === assistantId
-                      ? { ...m, content: normalize(streamedContent), parts, isStreaming: false, hasError: true }
+                      ? {
+                          ...m,
+                          content: normalize(streamedContent),
+                          parts,
+                          isStreaming: false,
+                          hasError: true,
+                          errorMessage: chunk.message,
+                        }
                       : m
                   )
                 );

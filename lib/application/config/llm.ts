@@ -1,5 +1,6 @@
 import { createAnthropicLLM } from "./anthropic";
 import { createOpenAILLM } from "./openai";
+import { createOpenRouterLLM } from "./openrouter";
 import { ModelProvider } from "../enums/model-names";
 
 export interface LlmRuntimeConfig {
@@ -14,9 +15,11 @@ export function createLLM(model: string | undefined, runtime: LlmRuntimeConfig) 
       return createAnthropicLLM(model ?? runtime.defaultModel, runtime.apiKey);
     case ModelProvider.OpenAI:
       return createOpenAILLM(model ?? runtime.defaultModel, runtime.apiKey);
+    case ModelProvider.OpenRouter:
+      return createOpenRouterLLM(model ?? runtime.defaultModel, runtime.apiKey);
     default:
       throw new Error(
-        `Unknown MODEL_PROVIDER: "${runtime.provider}". Must be "anthropic" or "openai".`
+        `Unknown MODEL_PROVIDER: "${runtime.provider}". Must be "anthropic", "openai", or "openrouter".`
       );
   }
 }
