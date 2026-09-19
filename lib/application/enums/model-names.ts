@@ -16,7 +16,7 @@ export enum OpenAIModel {
   gpt5_2 = "gpt-5.2",
 }
 
-/** Admin UI + validation: one row per selectable model. */
+/** Seed choices shown before the admin refreshes the live Anthropic catalog. */
 export const ANTHROPIC_MODEL_CHOICES: ReadonlyArray<{ value: AnthropicModel; label: string }> = [
   { value: AnthropicModel.Sonnet4_5, label: "Claude Sonnet 4.6" },
   { value: AnthropicModel.Opus4, label: "Claude Opus 4.5" },
@@ -29,10 +29,9 @@ export const OPENAI_MODEL_CHOICES: ReadonlyArray<{ value: OpenAIModel; label: st
   { value: OpenAIModel.gpt5_2, label: "GPT-5.2" },
 ];
 
-const ANTHROPIC_MODEL_IDS = new Set<string>(ANTHROPIC_MODEL_CHOICES.map((c) => c.value));
-
-function isAnthropicModelId(id: string): boolean {
-  return ANTHROPIC_MODEL_IDS.has(id);
+/** Any Claude model id from Anthropic's catalog. */
+export function isAnthropicChatModelId(id: string): boolean {
+  return /^claude-/i.test(id.trim());
 }
 
 /** Chat/reasoning-ish OpenAI model ids — excludes embeddings/tts/dall-e/etc. */
@@ -51,6 +50,6 @@ export function isOpenAiChatModelId(id: string): boolean {
 
 export function isValidModelForProvider(provider: ModelProvider, modelId: string): boolean {
   return provider === ModelProvider.Anthropic
-    ? isAnthropicModelId(modelId)
+    ? isAnthropicChatModelId(modelId)
     : isOpenAiChatModelId(modelId);
 }
