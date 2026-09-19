@@ -1,22 +1,98 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { FlaskConical } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FlaskConical, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  ANTHROPIC_MODEL_CHOICES,
-  OPENAI_MODEL_CHOICES,
-} from "@/lib/application/enums/model-names";
+import { ANTHROPIC_MODEL_CHOICES, OPENAI_MODEL_CHOICES } from "@/lib/application/enums/model-names";
 
-function modelChoices(provider: string) {
-  return provider === "openai" ? OPENAI_MODEL_CHOICES : ANTHROPIC_MODEL_CHOICES;
+type ModelOption = { value: string; label: string };
+type CatalogModel = { id: string; created?: number };
+
+function anthropicOptions(): ModelOption[] {
+  return ANTHROPIC_MODEL_CHOICES.map((o) => ({ value: o.value, label: o.label }));
 }
 
-function pickValidModel(provider: string, fromServer: string | undefined): string {
-  const opts = modelChoices(provider);
+function seedOpenAiOptions(): ModelOption[] {
+  return OPENAI_MODEL_CHOICES.map((o) => ({ value: o.value, label: o.label }));
+}
+
+function pickModel(options: ModelOption[], fromServer: string | undefined): string {
   const candidate = (fromServer ?? "").trim();
-  return opts.some((o) => o.value === candidate) ? candidate : opts[0]!.value;
+  if (candidate) return candidate;
+  return options[0]?.value ?? "";
+}
+
+function ModelCombobox({
+  options,
+  value,
+  onChange,
+}: {
+  options: ModelOption[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((o) => o.value.toLowerCase().includes(q));
+  }, [options, query]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative"
+      onBlur={(e) => {
+        if (!containerRef.current?.contains(e.relatedTarget as Node | null)) {
+          setOpen(false);
+          setQuery("");
+        }
+      }}
+    >
+      <input
+        value={open ? query : value}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          if (!open) setOpen(true);
+        }}
+        onFocus={() => {
+          setOpen(true);
+          setQuery("");
+        }}
+        placeholder="Search model IDs…"
+        autoComplete="off"
+        className="w-full h-10 px-3 rounded-lg bg-input border border-border text-sm font-mono"
+      />
+      {open ? (
+        <div className="absolute z-10 mt-1 w-full max-h-64 overflow-y-auto rounded-lg border border-border bg-popover shadow-lg">
+          {filtered.length === 0 ? (
+            <p className="px-3 py-2.5 text-sm text-muted-foreground">No models match &quot;{query}&quot;.</p>
+          ) : (
+            filtered.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => {
+                  onChange(o.value);
+                  setOpen(false);
+                  setQuery("");
+                }}
+                className={`block w-full text-left px-3 py-2 text-sm font-mono hover:bg-muted/60 ${
+                  o.value === value ? "bg-muted/40 text-foreground" : "text-foreground"
+                }`}
+              >
+                {o.value}
+              </button>
+            ))
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function messageFromApiError(data: unknown): string {
@@ -47,7 +123,10 @@ export default function ModelsSettingsPage() {
   const [anthropicApiKey, setAnthropicApiKey] = useState("");
   const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [keyPresence, setKeyPresence] = useState({ anthropic: false, openai: false });
+  const [openaiCatalog, setOpenaiCatalog] = useState<CatalogModel[]>([]);
+  const [catalogAutoFetched, setCatalogAutoFetched] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [testSuccess, setTestSuccess] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
@@ -64,7 +143,9 @@ export default function ModelsSettingsPage() {
     setTestSuccess(null);
     const p = data.provider ?? "anthropic";
     setProvider(p);
-    setModel(pickValidModel(p, data.model));
+    setModel(
+      pickModel(p === "openai" ? seedOpenAiOptions() : anthropicOptions(), data.model)
+    );
     setKeyPresence({
       anthropic: Boolean(data.has_anthropic_api_key_stored ?? data.has_api_key_stored),
       openai: Boolean(data.has_openai_api_key_stored),
@@ -76,6 +157,39 @@ export default function ModelsSettingsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- client fetch-on-mount; `load` only updates state after await
     void load();
   }, [load]);
+
+  const handleRefreshCatalog = useCallback(async () => {
+    setRefreshing(true);
+    setError(null);
+    setTestSuccess(null);
+    const res = await fetch("/api/admin/settings/models/openai/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        openai_api_key: openaiApiKey.trim() || undefined,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setRefreshing(false);
+    if (!res.ok) {
+      setError(messageFromApiError(data));
+      return;
+    }
+    setOpenaiCatalog(Array.isArray(data.models) ? (data.models as CatalogModel[]) : []);
+  }, [openaiApiKey]);
+
+  useEffect(() => {
+    if (
+      provider === "openai" &&
+      keyPresence.openai &&
+      openaiCatalog.length === 0 &&
+      !catalogAutoFetched
+    ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot catalog fetch when OpenAI becomes active
+      setCatalogAutoFetched(true);
+      void handleRefreshCatalog();
+    }
+  }, [provider, keyPresence.openai, openaiCatalog.length, catalogAutoFetched, handleRefreshCatalog]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -96,9 +210,14 @@ export default function ModelsSettingsPage() {
       setError(messageFromApiError(j));
       return;
     }
+    if (openaiApiKey.trim()) {
+      // New/rotated key — allow the catalog to auto-fetch again with it.
+      setCatalogAutoFetched(false);
+    }
     setAnthropicApiKey("");
     setOpenaiApiKey("");
     await load();
+    setTestSuccess("Saved.");
   }
 
   async function handleTest() {
@@ -126,7 +245,17 @@ export default function ModelsSettingsPage() {
     );
   }
 
-  const modelOptions = modelChoices(provider);
+  let modelOptions: ModelOption[];
+  if (provider === "openai") {
+    modelOptions = openaiCatalog.length > 0
+      ? openaiCatalog.map((c) => ({ value: c.id, label: c.id }))
+      : seedOpenAiOptions();
+    if (model.trim() && !modelOptions.some((o) => o.value === model)) {
+      modelOptions = [{ value: model, label: model }, ...modelOptions];
+    }
+  } else {
+    modelOptions = anthropicOptions();
+  }
 
   return (
     <div className="w-full space-y-8">
@@ -142,7 +271,7 @@ export default function ModelsSettingsPage() {
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
         <form onSubmit={handleSave} className="space-y-6">
-          <Card>
+          <Card className="overflow-visible">
             <CardHeader>
               <CardTitle className="text-base">Active chat runtime</CardTitle>
               <CardDescription>
@@ -162,10 +291,9 @@ export default function ModelsSettingsPage() {
                     setTestSuccess(null);
                     setError(null);
                     setProvider(next);
-                    setModel((prev) => {
-                      const opts = modelChoices(next);
-                      return opts.some((o) => o.value === prev) ? prev : opts[0]!.value;
-                    });
+                    setModel((prev) =>
+                      pickModel(next === "openai" ? seedOpenAiOptions() : anthropicOptions(), prev)
+                    );
                   }}
                   className="w-full h-10 px-3 rounded-lg bg-input border border-border text-sm"
                 >
@@ -175,24 +303,57 @@ export default function ModelsSettingsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Model for active provider
-                </label>
-                <select
-                  value={model}
-                  onChange={(e) => {
-                    setModel(e.target.value);
-                    setTestSuccess(null);
-                    setError(null);
-                  }}
-                  className="w-full h-10 px-3 rounded-lg bg-input border border-border text-sm font-mono"
-                >
-                  {modelOptions.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label} ({o.value})
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Model for active provider
+                  </label>
+                  {provider === "openai" ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={refreshing}
+                      onClick={() => void handleRefreshCatalog()}
+                    >
+                      <RefreshCw className={`size-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                      {refreshing ? "Refreshing…" : "Refresh from OpenAI"}
+                    </Button>
+                  ) : null}
+                </div>
+                {provider === "openai" ? (
+                  <ModelCombobox
+                    options={modelOptions}
+                    value={model}
+                    onChange={(v) => {
+                      setModel(v);
+                      setTestSuccess(null);
+                      setError(null);
+                    }}
+                  />
+                ) : (
+                  <select
+                    value={model}
+                    onChange={(e) => {
+                      setModel(e.target.value);
+                      setTestSuccess(null);
+                      setError(null);
+                    }}
+                    className="w-full h-10 px-3 rounded-lg bg-input border border-border text-sm font-mono"
+                  >
+                    {modelOptions.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label} ({o.value})
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {provider === "openai" ? (
+                  <p className="text-xs text-muted-foreground">
+                    {openaiCatalog.length > 0
+                      ? `${openaiCatalog.length} models from your OpenAI account.`
+                      : "Add an OpenAI key and refresh to list every model on your account."}
+                  </p>
+                ) : null}
               </div>
             </CardContent>
           </Card>
@@ -259,7 +420,7 @@ export default function ModelsSettingsPage() {
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    One key for all listed OpenAI models. Falls back to{" "}
+                    Used for chat and catalog refresh. Falls back to{" "}
                     <span className="font-mono">OPENAI_API_KEY</span> if empty.
                   </p>
                   <input
@@ -283,7 +444,12 @@ export default function ModelsSettingsPage() {
 
           <div className="flex flex-wrap gap-2">
             <Button type="submit">Save</Button>
-            <Button type="button" variant="outline" disabled={testing} onClick={handleTest}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={testing || !model}
+              onClick={() => void handleTest()}
+            >
               <FlaskConical className="size-3.5" />
               {testing ? "Testing…" : "Test active connection"}
             </Button>

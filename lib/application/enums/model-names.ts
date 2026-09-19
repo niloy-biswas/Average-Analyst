@@ -9,7 +9,7 @@ export enum AnthropicModel {
   Haiku4_5 = "claude-haiku-4-5",
 }
 
-/** GPT-5.x only — reasoning-style models (no legacy chat like gpt-4o-mini). */
+/** Seed choices shown before the admin refreshes the live OpenAI catalog. */
 export enum OpenAIModel {
   gpt5_5 = "gpt-5.5",
   gpt5_4 = "gpt-5.4",
@@ -30,18 +30,27 @@ export const OPENAI_MODEL_CHOICES: ReadonlyArray<{ value: OpenAIModel; label: st
 ];
 
 const ANTHROPIC_MODEL_IDS = new Set<string>(ANTHROPIC_MODEL_CHOICES.map((c) => c.value));
-const OPENAI_MODEL_IDS = new Set<string>(OPENAI_MODEL_CHOICES.map((c) => c.value));
 
 function isAnthropicModelId(id: string): boolean {
   return ANTHROPIC_MODEL_IDS.has(id);
 }
 
-function isOpenAiModelId(id: string): boolean {
-  return OPENAI_MODEL_IDS.has(id);
+/** Chat/reasoning-ish OpenAI model ids — excludes embeddings/tts/dall-e/etc. */
+export function isOpenAiChatModelId(id: string): boolean {
+  const lower = id.trim().toLowerCase();
+  if (!lower) return false;
+  if (
+    /embedding|whisper|tts|dall-e|moderation|realtime|transcribe|audio|image|codex|babbage|davinci|curie|ada|sora|gpt-image/i.test(
+      lower
+    )
+  ) {
+    return false;
+  }
+  return /^(gpt-|o1|o3|o4)/i.test(lower);
 }
 
 export function isValidModelForProvider(provider: ModelProvider, modelId: string): boolean {
   return provider === ModelProvider.Anthropic
     ? isAnthropicModelId(modelId)
-    : isOpenAiModelId(modelId);
+    : isOpenAiChatModelId(modelId);
 }
