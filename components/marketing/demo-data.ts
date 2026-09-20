@@ -1,5 +1,7 @@
 /** Deterministic sample data for marketing demos (not a live API). */
 
+import { BRAND } from "@/lib/brand";
+
 export const HERO_DEMO_QUESTION = "Why did course revenue fall last month?";
 
 export const HERO_CONTEXT_STEPS = [
@@ -43,6 +45,15 @@ export const HERO_CHART_DATA = [
   { week: "W5", revenue: 352, enrolments: 220, previous: 450 },
   { week: "W6", revenue: 335, enrolments: 205, previous: 440 },
 ];
+
+/** Fixed reply when visitors type into the hero demo input. */
+export const HERO_LIVE_REPLY = {
+  prefix: "To explore your own data,",
+  accountLabel: "create an account",
+  accountHref: "/signup" as const,
+  demoLabel: "book a demo",
+  demoSubject: `Demo request — ${BRAND.name}`,
+};
 
 export type ShowcaseChartType = "line" | "hbar" | "stacked" | "area";
 
