@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Layers, Settings, Sparkles } from "lucide-react";
+import { BrandMark } from "@/components/brand-mark";
 import { DashboardSelector } from "@/components/dashboard/dashboard-selector";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { UserAvatar } from "@/components/auth/user-avatar";
@@ -45,9 +46,7 @@ export function SelectorScreen({ dashboards, profile }: SelectorScreenProps) {
           {/* Brand + profile row */}
           <div className="flex items-center justify-between mb-7">
             <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shadow-[0_0_14px_var(--primary-glow)]">
-                <Layers className="h-4 w-4 text-white" />
-              </div>
+              <BrandMark showWordmark={false} size="md" />
               <div>
                 <p className="text-base font-black tracking-tight text-foreground">{BRAND.name}</p>
                 <p className="text-xs text-muted-foreground">{BRAND.productLabel}</p>
