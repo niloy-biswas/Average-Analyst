@@ -2,8 +2,8 @@
  * Product brand. Change here when renaming. UI and landing copy import from this module.
  */
 export const BRAND = {
-  name: "Average Analyst",
-  tagline: "Above-average answers from Average Analyst.",
+  name: "Evid",
+  tagline: "Ask your data. Get answers backed by evidence.",
   description:
     "Ask questions in plain English and get charts, explanations, and SQL grounded in approved dashboards, tables, and business rules.",
   ogDescription:
@@ -11,8 +11,8 @@ export const BRAND = {
   /** Short line under the name in product chrome */
   productLabel: "Governed AI analytics",
   supportEmail: "hello@niloy.tech",
-  githubUrl: "https://github.com/niloy-biswas/Average-Analyst",
-  footerLine: "Average Analyst. Above-average answers from your data.",
+  githubUrl: "https://github.com/niloy-biswas/Evid",
+  footerLine: "Evid. Governed answers from your own data.",
 } as const;
 
 /** Primary marketing CTA: signup vs open product. */
@@ -22,7 +22,7 @@ export function marketingPrimaryCta(isLoggedIn: boolean): {
 } {
   return isLoggedIn
     ? { href: "/app", label: "Open app" }
-    : { href: "/signup", label: "Ask Average Analyst" };
+    : { href: "/signup", label: "Ask Evid" };
 }
 
 export function contactMailto(subject?: string): string {
