@@ -15,17 +15,18 @@ export const BRAND = {
   footerLine: "Evid. Governed answers from your own data.",
 } as const;
 
-/** Primary marketing CTA: signup vs open product. */
-export function marketingPrimaryCta(isLoggedIn: boolean): {
-  href: "/app" | "/signup";
-  label: string;
-} {
-  return isLoggedIn
-    ? { href: "/app", label: "Open app" }
-    : { href: "/signup", label: "Ask Evid" };
-}
-
 export function contactMailto(subject?: string): string {
   if (!subject) return `mailto:${BRAND.supportEmail}`;
   return `mailto:${BRAND.supportEmail}?subject=${encodeURIComponent(subject)}`;
+}
+
+/** Primary marketing CTA: open product (signed in) vs book a demo (signed out, no self-serve signup). */
+export function marketingPrimaryCta(isLoggedIn: boolean): {
+  href: string;
+  label: string;
+  external: boolean;
+} {
+  return isLoggedIn
+    ? { href: "/app", label: "Open app", external: false }
+    : { href: contactMailto(`Demo request: ${BRAND.name}`), label: "Book a demo", external: true };
 }

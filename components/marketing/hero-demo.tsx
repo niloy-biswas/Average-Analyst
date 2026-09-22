@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowUp,
@@ -530,13 +529,6 @@ export function HeroDemo() {
               </div>
               <p className="text-sm text-foreground leading-relaxed px-0.5">
                 {HERO_LIVE_REPLY.prefix}{" "}
-                <Link
-                  href={HERO_LIVE_REPLY.accountHref}
-                  className="text-primary font-medium hover:underline underline-offset-2"
-                >
-                  {HERO_LIVE_REPLY.accountLabel}
-                </Link>{" "}
-                or{" "}
                 <a
                   href={contactMailto(HERO_LIVE_REPLY.demoSubject)}
                   className="text-primary font-medium hover:underline underline-offset-2"

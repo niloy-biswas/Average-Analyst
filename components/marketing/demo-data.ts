@@ -48,9 +48,7 @@ export const HERO_CHART_DATA = [
 
 /** Fixed reply when visitors type into the hero demo input. */
 export const HERO_LIVE_REPLY = {
-  prefix: "To explore your own data,",
-  accountLabel: "create an account",
-  accountHref: "/signup" as const,
+  prefix: "To explore this on your own data,",
   demoLabel: "book a demo",
   demoSubject: `Demo request: ${BRAND.name}`,
 };

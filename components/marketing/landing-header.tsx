@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { BrandMark } from "@/components/brand-mark";
 import { GitHubIcon } from "@/components/marketing/github-icon";
+import { PrimaryCta } from "@/components/marketing/primary-cta";
 import { MARKETING_NAV } from "@/components/marketing/config";
 import { BRAND, marketingPrimaryCta } from "@/lib/brand";
 import { cn } from "@/lib/utils";
@@ -68,21 +69,11 @@ export function LandingHeader({ isLoggedIn }: { isLoggedIn: boolean }) {
             <GitHubIcon />
           </a>
           <ThemeToggle />
-          {!isLoggedIn && (
-            <Link
-              href="/login"
-              className="hidden md:inline-flex text-sm font-medium text-muted-foreground hover:text-foreground px-2.5 py-1.5 transition-colors"
-            >
-              Sign in
-            </Link>
-          )}
-          <Link
-            href={primary.href}
+          <PrimaryCta
+            {...primary}
             className="hidden sm:inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            {primary.label}
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+            iconClassName="h-3.5 w-3.5"
+          />
           <button
             type="button"
             className="lg:hidden h-8 w-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -122,23 +113,12 @@ export function LandingHeader({ isLoggedIn }: { isLoggedIn: boolean }) {
               <GitHubIcon />
               GitHub
             </a>
-            {!isLoggedIn && (
-              <Link
-                href="/login"
-                className="rounded-lg px-3 py-2.5 text-sm text-foreground hover:bg-muted"
-                onClick={() => setOpen(false)}
-              >
-                Sign in
-              </Link>
-            )}
-            <Link
-              href={primary.href}
+            <PrimaryCta
+              {...primary}
               className="mt-2 inline-flex items-center justify-center gap-1.5 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium"
+              iconClassName="h-3.5 w-3.5"
               onClick={() => setOpen(false)}
-            >
-              {primary.label}
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+            />
           </nav>
         </div>
       )}

@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
 import { HeroDemo } from "@/components/marketing/hero-demo";
 import { GitHubIcon } from "@/components/marketing/github-icon";
+import { PrimaryCta } from "@/components/marketing/primary-cta";
 import { TRUST_LABELS } from "@/components/marketing/config";
 import { BRAND, marketingPrimaryCta } from "@/lib/brand";
 
@@ -48,13 +47,10 @@ export function HeroSection({ isLoggedIn }: { isLoggedIn: boolean }) {
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-3 mb-4">
-              <Link
-                href={primary.href}
+              <PrimaryCta
+                {...primary}
                 className="inline-flex items-center gap-2 h-11 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-[0_0_24px_var(--primary-glow)]"
-              >
-                {primary.label}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+              />
               <a
                 href={BRAND.githubUrl}
                 target="_blank"
