@@ -1,10 +1,10 @@
-# Average Analyst
+# Evid
 
 Governed AI analytics. Ask questions in plain English and get charts, explanations, and inspectable SQL, grounded in approved dashboards, tables, and business rules.
 
-**Tagline:** Above-average answers from Average Analyst.
+**Tagline:** Ask your data. Get answers backed by evidence.
 
-Repo: [github.com/niloy-biswas/Average-Analyst](https://github.com/niloy-biswas/Average-Analyst)  
+Repo: [github.com/niloy-biswas/Evid](https://github.com/niloy-biswas/Evid)  
 Contact: [hello@niloy.tech](mailto:hello@niloy.tech)
 
 ## How it works
