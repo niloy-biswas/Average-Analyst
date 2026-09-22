@@ -269,7 +269,7 @@ export function HeroDemo() {
     <div
       ref={rootRef}
       className="relative rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm overflow-hidden shadow-2xl"
-      aria-label="Product demonstration of Average Analyst answering a revenue question"
+      aria-label="Product demonstration of Evid answering a revenue question"
     >
       <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent pointer-events-none" />
 

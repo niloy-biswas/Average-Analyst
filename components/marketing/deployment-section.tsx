@@ -19,7 +19,7 @@ export function DeploymentSection() {
           Run it your way
         </p>
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight max-w-2xl mb-3">
-          Keep your data, and your average analyst, where you want them.
+          Keep your data, and Evid, where you want them.
         </h2>
         <p className="text-muted-foreground max-w-xl mb-10 leading-relaxed">
           Software, hosting, and services are separate. Roadmap items stay labeled as roadmap.

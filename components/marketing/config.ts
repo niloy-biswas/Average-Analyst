@@ -37,7 +37,7 @@ export const OFFERINGS: Array<{
     id: "community",
     title: `${BRAND.name} Community Edition`,
     status: "Roadmap",
-    body: "Run Average Analyst on your own infrastructure with your own Supabase project, data warehouse, and model credentials.",
+    body: "Run Evid on your own infrastructure with your own Supabase project, data warehouse, and model credentials.",
     ctaLabel: "View self-hosting roadmap",
     ctaHref: "#open-source",
   },
@@ -47,7 +47,7 @@ export const OFFERINGS: Array<{
     status: "Available",
     body: "A managed version for teams that do not want to operate the application themselves.",
     ctaLabel: "Talk to us",
-    ctaHref: contactMailto("Average Analyst Cloud"),
+    ctaHref: contactMailto("Evid Cloud"),
   },
   {
     id: "implementation",
@@ -55,7 +55,7 @@ export const OFFERINGS: Array<{
     status: "Available",
     body: "We can connect your warehouse, configure dashboards, define context, and prepare your first published analytics experiences.",
     ctaLabel: "Contact for implementation",
-    ctaHref: contactMailto("Average Analyst implementation"),
+    ctaHref: contactMailto("Evid implementation"),
   },
   {
     id: "api",
@@ -79,26 +79,26 @@ export const PRICING_PLANS: Array<{
   {
     id: "community",
     title: "Community",
-    blurb: "Run Average Analyst yourself. Bring your own Supabase, warehouse, and model keys.",
+    blurb: "Run Evid yourself. Bring your own Supabase, warehouse, and model keys.",
     points: [
       "Self-hosted on your infrastructure",
       "Published context and approved tables",
       "Open-source friendly path",
     ],
     ctaLabel: "Contact about Community",
-    subject: "Average Analyst Community",
+    subject: "Evid Community",
   },
   {
     id: "cloud",
     title: "Cloud + implementation",
     blurb: "We host the app and help you connect dashboards, rules, and data sources.",
     points: [
-      "Managed Average Analyst Cloud",
+      "Managed Evid Cloud",
       "Warehouse and context setup support",
       "Role-based admin for your team",
     ],
     ctaLabel: "Contact about Cloud",
-    subject: "Average Analyst Cloud and implementation",
+    subject: "Evid Cloud and implementation",
   },
   {
     id: "setup",
@@ -111,7 +111,7 @@ export const PRICING_PLANS: Array<{
       "Handoff and walkthrough for your team",
     ],
     ctaLabel: "Contact about setup",
-    subject: "Average Analyst setup service",
+    subject: "Evid setup service",
   },
 ];
 
@@ -162,7 +162,7 @@ export const FAQ_ITEMS: Array<{ id: string; question: string; answer: string }> 
     id: "warehouse-data",
     question: "Do you store warehouse data?",
     answer:
-      "No. Queries run against your configured BigQuery project. Average Analyst stores chat messages, dashboard context (rules, caveats, instructions, approved tables), and encrypted connection credentials in your Supabase project, not copies of warehouse tables.",
+      "No. Queries run against your configured BigQuery project. Evid stores chat messages, dashboard context (rules, caveats, instructions, approved tables), and encrypted connection credentials in your Supabase project, not copies of warehouse tables.",
   },
   {
     id: "warehouses",
@@ -172,7 +172,7 @@ export const FAQ_ITEMS: Array<{ id: string; question: string; answer: string }> 
   },
   {
     id: "self-host",
-    question: "Can Average Analyst be self-hosted?",
+    question: "Can Evid be self-hosted?",
     answer:
       "The app is designed to be self-hostable and avoids Vercel-only APIs. Docker and Docker Compose packaging are roadmap items. The intended first path is Supabase Cloud plus a containerized app.",
   },
@@ -186,13 +186,13 @@ export const FAQ_ITEMS: Array<{ id: string; question: string; answer: string }> 
     id: "bi-replace",
     question: "Does this replace our BI tool?",
     answer:
-      "No. Average Analyst works beside Metabase, Looker Studio, Looker, Power BI, or other BI tools. It governs the AI layer around published context. It does not need to replace your charts.",
+      "No. Evid works beside Metabase, Looker Studio, Looker, Power BI, or other BI tools. It governs the AI layer around published context. It does not need to replace your charts.",
   },
   {
     id: "vs-generic",
     question: "How is this different from a generic AI SQL tool?",
     answer:
-      "Questions are scoped to a published dashboard, grounded in business rules and caveats, limited to approved tables, gated by role-based publishing, and return inspectable SQL and charts, not just a sentence.",
+      "Questions are scoped to a published dashboard, grounded in business rules and caveats, limited to approved tables, and gated by role-based publishing. Every answer comes back with the SQL, the source tables, and the context that shaped it, so you can check the work.",
   },
   {
     id: "byo-model",

@@ -36,7 +36,7 @@ export function FinalCta({ isLoggedIn }: { isLoggedIn: boolean }) {
           Your data already knows the answer.
         </h2>
         <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-          Ask Average Analyst, or run one on your own infrastructure.
+          Ask Evid, or run it on your own infrastructure.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Link
@@ -55,7 +55,7 @@ export function FinalCta({ isLoggedIn }: { isLoggedIn: boolean }) {
             View on GitHub
           </a>
           <a
-            href={contactMailto("Average Analyst implementation")}
+            href={contactMailto("Evid implementation")}
             className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
           >
             Contact for implementation

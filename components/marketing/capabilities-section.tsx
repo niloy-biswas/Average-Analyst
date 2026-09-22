@@ -139,7 +139,7 @@ export function CapabilitiesSection() {
           Product
         </p>
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3 max-w-xl">
-          Surprisingly responsible for an average analyst.
+          Boring where it counts.
         </h2>
         <p className="text-muted-foreground max-w-xl mb-12 leading-relaxed">
           Governance first. Chat second. Every capability below exists to keep answers on the

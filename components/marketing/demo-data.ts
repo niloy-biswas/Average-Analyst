@@ -19,7 +19,7 @@ export const HERO_ANSWER = {
   metricValue: 1.42,
   metricUnit: "M",
   changePct: -12.4,
-  foundLabel: "Average Analyst found something",
+  foundLabel: "Evid found something",
   sql: `SELECT
   DATE_TRUNC(order_date, MONTH) AS month,
   SUM(net_amount) AS net_revenue,
@@ -52,7 +52,7 @@ export const HERO_LIVE_REPLY = {
   accountLabel: "create an account",
   accountHref: "/signup" as const,
   demoLabel: "book a demo",
-  demoSubject: `Demo request — ${BRAND.name}`,
+  demoSubject: `Demo request: ${BRAND.name}`,
 };
 
 export type ShowcaseChartType = "line" | "hbar" | "stacked" | "area";

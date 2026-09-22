@@ -10,7 +10,7 @@ export function ComparisonSection() {
           Not another SQL chatbot.
         </h2>
         <p className="text-muted-foreground max-w-xl mb-10 leading-relaxed">
-          Average Analyst works beside your existing BI tools. It does not need to replace them.
+          Evid works beside your existing BI tools. It does not need to replace them.
         </p>
 
         <div className="overflow-x-auto rounded-2xl border border-border/60">
@@ -19,7 +19,7 @@ export function ComparisonSection() {
               <tr className="border-b border-border/60 bg-muted/30">
                 <th className="px-4 py-3 font-semibold text-foreground">Capability</th>
                 <th className="px-4 py-3 font-semibold text-muted-foreground">Generic SQL chatbot</th>
-                <th className="px-4 py-3 font-semibold text-primary">Average Analyst</th>
+                <th className="px-4 py-3 font-semibold text-primary">Evid</th>
               </tr>
             </thead>
             <tbody>
