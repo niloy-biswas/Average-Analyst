@@ -10,6 +10,7 @@ import { BRAND, marketingPrimaryCta } from "@/lib/brand";
 
 export function HeroSection({ isLoggedIn }: { isLoggedIn: boolean }) {
   const primary = marketingPrimaryCta(isLoggedIn);
+  const [beforeHighlight, afterHighlight] = BRAND.tagline.split("evidence");
 
   return (
     <section className="mx-auto max-w-6xl px-4 sm:px-6 pt-8 sm:pt-10 pb-16 sm:pb-24">
@@ -34,7 +35,11 @@ export function HeroSection({ isLoggedIn }: { isLoggedIn: boolean }) {
               {BRAND.productLabel}
             </p>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.05] text-balance mb-5">
-              {BRAND.tagline}
+              {beforeHighlight}
+              {afterHighlight !== undefined ? (
+                <span className="font-mono italic text-primary">evidence</span>
+              ) : null}
+              {afterHighlight}
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed text-pretty max-w-2xl mx-auto mb-8">
               Ask questions in plain English and get charts, explanations, and inspectable
