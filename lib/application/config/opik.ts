@@ -2,6 +2,6 @@ import { OpikCallbackHandler } from "opik-langchain";
 
 export function createOpikHandler() {
   return new OpikCallbackHandler({
-    projectName: process.env.OPIK_PROJECT_NAME ?? "average-analyst",
+    projectName: process.env.OPIK_PROJECT_NAME ?? "evid",
   });
 }

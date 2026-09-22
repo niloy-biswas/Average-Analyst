@@ -1,5 +1,5 @@
 -- ============================================================
--- Average Analyst — Supabase Schema & Seed Data
+-- Evid: Supabase Schema & Seed Data
 -- Run this in the Supabase SQL Editor
 -- ============================================================
 

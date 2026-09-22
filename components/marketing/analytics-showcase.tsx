@@ -38,8 +38,8 @@ export function AnalyticsShowcase() {
           Ask a business question. Get more than a sentence.
         </h2>
         <p className="text-muted-foreground max-w-xl mb-10 leading-relaxed">
-          Pick a question. Average Analyst responds with a metric, chart, observation, and the
-          context that scoped it.
+          Pick a question. Evid responds with a metric, chart, observation, and the context
+          that scoped it.
         </p>
 
         <div className="grid lg:grid-cols-[280px_1fr] gap-4 lg:gap-6">

@@ -159,4 +159,4 @@ Detail: [`docs/COMPETITOR_ANALYSIS.md`](docs/COMPETITOR_ANALYSIS.md).
 
 - **`/`** — public marketing landing (brand, offerings, FAQ).
 - **`/app`** — authenticated product home (dashboard selector).
-- Brand strings: `lib/brand.ts` (`Average Analyst` — changeable).
+- Brand strings: `lib/brand.ts` (`Evid`, changeable).

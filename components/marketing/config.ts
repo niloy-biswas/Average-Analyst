@@ -1,11 +1,8 @@
-import { BRAND, contactMailto } from "@/lib/brand";
-
 export type StatusBadge = "Available" | "Roadmap" | "Coming soon";
 
 export const MARKETING_NAV = [
   { href: "#product", label: "Product" },
   { href: "#how-it-works", label: "How it works" },
-  { href: "#open-source", label: "Open Source" },
   { href: "#pricing", label: "Pricing" },
   { href: "#faq", label: "FAQ" },
 ] as const;
@@ -25,52 +22,11 @@ export const INTEGRATION_LABELS = [
   "OpenAI-compatible models",
 ] as const;
 
-export const OFFERINGS: Array<{
-  id: string;
-  title: string;
-  status: StatusBadge;
-  body: string;
-  ctaLabel: string;
-  ctaHref: string;
-}> = [
-  {
-    id: "community",
-    title: `${BRAND.name} Community Edition`,
-    status: "Roadmap",
-    body: "Run Average Analyst on your own infrastructure with your own Supabase project, data warehouse, and model credentials.",
-    ctaLabel: "View self-hosting roadmap",
-    ctaHref: "#open-source",
-  },
-  {
-    id: "cloud",
-    title: `${BRAND.name} Cloud`,
-    status: "Available",
-    body: "A managed version for teams that do not want to operate the application themselves.",
-    ctaLabel: "Talk to us",
-    ctaHref: contactMailto("Average Analyst Cloud"),
-  },
-  {
-    id: "implementation",
-    title: "Implementation services",
-    status: "Available",
-    body: "We can connect your warehouse, configure dashboards, define context, and prepare your first published analytics experiences.",
-    ctaLabel: "Contact for implementation",
-    ctaHref: contactMailto("Average Analyst implementation"),
-  },
-  {
-    id: "api",
-    title: "API",
-    status: "Coming soon",
-    body: "Programmatic access to governed analytics for product embeds and internal tools.",
-    ctaLabel: "Coming soon",
-    ctaHref: "#open-source",
-  },
-];
-
-/** Pricing / contact cards. No dollar amounts; all CTAs are email. */
+/** Pricing / contact cards. No dollar amounts; all CTAs are email except roadmap/coming-soon items. */
 export const PRICING_PLANS: Array<{
   id: string;
   title: string;
+  status: StatusBadge;
   blurb: string;
   points: string[];
   ctaLabel: string;
@@ -79,30 +35,33 @@ export const PRICING_PLANS: Array<{
   {
     id: "community",
     title: "Community",
-    blurb: "Run Average Analyst yourself. Bring your own Supabase, warehouse, and model keys.",
+    status: "Roadmap",
+    blurb: "Run Evid yourself. Bring your own Supabase, warehouse, and model keys.",
     points: [
       "Self-hosted on your infrastructure",
       "Published context and approved tables",
       "Open-source friendly path",
     ],
     ctaLabel: "Contact about Community",
-    subject: "Average Analyst Community",
+    subject: "Evid Community",
   },
   {
     id: "cloud",
     title: "Cloud + implementation",
+    status: "Available",
     blurb: "We host the app and help you connect dashboards, rules, and data sources.",
     points: [
-      "Managed Average Analyst Cloud",
+      "Managed Evid Cloud",
       "Warehouse and context setup support",
       "Role-based admin for your team",
     ],
     ctaLabel: "Contact about Cloud",
-    subject: "Average Analyst Cloud and implementation",
+    subject: "Evid Cloud and implementation",
   },
   {
     id: "setup",
     title: "We set it up for you",
+    status: "Available",
     blurb:
       "A full setup service: we wire your stack, publish your first dashboards, and hand over a working workspace.",
     points: [
@@ -111,7 +70,7 @@ export const PRICING_PLANS: Array<{
       "Handoff and walkthrough for your team",
     ],
     ctaLabel: "Contact about setup",
-    subject: "Average Analyst setup service",
+    subject: "Evid setup service",
   },
 ];
 
@@ -162,7 +121,7 @@ export const FAQ_ITEMS: Array<{ id: string; question: string; answer: string }> 
     id: "warehouse-data",
     question: "Do you store warehouse data?",
     answer:
-      "No. Queries run against your configured BigQuery project. Average Analyst stores chat messages, dashboard context (rules, caveats, instructions, approved tables), and encrypted connection credentials in your Supabase project, not copies of warehouse tables.",
+      "No. Queries run against your configured BigQuery project. Evid stores chat messages, dashboard context, and encrypted credentials in your Supabase project, never copies of warehouse tables.",
   },
   {
     id: "warehouses",
@@ -172,9 +131,9 @@ export const FAQ_ITEMS: Array<{ id: string; question: string; answer: string }> 
   },
   {
     id: "self-host",
-    question: "Can Average Analyst be self-hosted?",
+    question: "Can Evid be self-hosted?",
     answer:
-      "The app is designed to be self-hostable and avoids Vercel-only APIs. Docker and Docker Compose packaging are roadmap items. The intended first path is Supabase Cloud plus a containerized app.",
+      "The app is designed to be self-hostable and avoids Vercel-only APIs. Docker packaging is on the roadmap; today the path is Supabase Cloud plus a containerized app.",
   },
   {
     id: "roles",
@@ -186,13 +145,13 @@ export const FAQ_ITEMS: Array<{ id: string; question: string; answer: string }> 
     id: "bi-replace",
     question: "Does this replace our BI tool?",
     answer:
-      "No. Average Analyst works beside Metabase, Looker Studio, Looker, Power BI, or other BI tools. It governs the AI layer around published context. It does not need to replace your charts.",
+      "No. Evid works beside Metabase, Looker Studio, Looker, Power BI, or other BI tools, governing the AI layer around published context. It doesn't need to replace your charts.",
   },
   {
     id: "vs-generic",
     question: "How is this different from a generic AI SQL tool?",
     answer:
-      "Questions are scoped to a published dashboard, grounded in business rules and caveats, limited to approved tables, gated by role-based publishing, and return inspectable SQL and charts, not just a sentence.",
+      "Questions are scoped to a published dashboard, grounded in business rules and caveats, limited to approved tables, and gated by role-based publishing. Every answer comes back with the SQL, the source tables, and the context that shaped it, so you can check the work.",
   },
   {
     id: "byo-model",
@@ -239,13 +198,4 @@ export const CAPABILITIES = [
     title: "Roles and publishing",
     body: "Editors prepare context. Admins publish it. Users query only what has been approved.",
   },
-] as const;
-
-export const TRANSPARENCY_POINTS = [
-  "Credentials are encrypted at rest (AES-GCM).",
-  "Data source credentials are stored separately from chat content.",
-  "Queries run directly against the configured data source.",
-  "Environment-variable fallback remains supported for first run.",
-  "Chat uses published dashboard context only.",
-  "Admin API routes enforce roles server-side.",
 ] as const;

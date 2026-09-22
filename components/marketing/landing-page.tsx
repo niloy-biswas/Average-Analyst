@@ -9,12 +9,8 @@ import {
 import { HowItWorksSection } from "@/components/marketing/how-it-works";
 import { CapabilitiesSection } from "@/components/marketing/capabilities-section";
 import { AnalyticsShowcase } from "@/components/marketing/analytics-showcase";
-import { GovernanceWorkflow } from "@/components/marketing/governance-workflow";
 import { ComparisonSection } from "@/components/marketing/comparison-section";
-import { DeploymentSection } from "@/components/marketing/deployment-section";
 import { PricingContactSection } from "@/components/marketing/pricing-section";
-import { TransparencySection } from "@/components/marketing/transparency-section";
-import { PersonalityBreak } from "@/components/marketing/personality-break";
 import { FaqSection } from "@/components/marketing/faq-section";
 import { FinalCta } from "@/components/marketing/final-cta";
 import { LandingFooter } from "@/components/marketing/landing-footer";
@@ -37,12 +33,8 @@ export function LandingPageView({ isLoggedIn }: { isLoggedIn: boolean }) {
         <HowItWorksSection />
         <CapabilitiesSection />
         <AnalyticsShowcase />
-        <GovernanceWorkflow />
         <ComparisonSection />
-        <DeploymentSection />
         <PricingContactSection />
-        <TransparencySection />
-        <PersonalityBreak />
         <FaqSection />
         <FinalCta isLoggedIn={isLoggedIn} />
       </main>

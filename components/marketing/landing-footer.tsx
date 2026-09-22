@@ -52,12 +52,12 @@ export function LandingFooter() {
                 </a>
               </li>
               <li>
-                <a href="#open-source" className="hover:text-foreground transition-colors">
+                <a href="#pricing" className="hover:text-foreground transition-colors">
                   Self-hosting
                 </a>
               </li>
               <li>
-                <a href="#open-source" className="hover:text-foreground transition-colors">
+                <a href="#pricing" className="hover:text-foreground transition-colors">
                   Roadmap
                 </a>
               </li>

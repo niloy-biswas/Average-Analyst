@@ -16,14 +16,14 @@ const STEPS = [
   {
     id: "govern",
     title: "Govern",
-    phrase: "Publish to Average Analyst.",
+    phrase: "Publish to Evid.",
     body: "Add approved tables, business rules, caveats, instructions, and example questions. Keep the context in draft until it is ready.",
     visual: "govern" as const,
   },
   {
     id: "ask",
     title: "Ask",
-    phrase: "Ask Average Analyst.",
+    phrase: "Ask Evid.",
     body: "Users ask questions only against published context and receive answers, charts, and inspectable SQL.",
     visual: "ask" as const,
   },
@@ -93,7 +93,7 @@ function StepVisual({ kind }: { kind: "connect" | "govern" | "ask" }) {
         Why did revenue fall last month?
       </div>
       <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2">
-        <p className="text-[11px] text-primary font-medium">Average Analyst found something</p>
+        <p className="text-[11px] text-primary font-medium">Evid found something</p>
         <p className="text-xs text-foreground leading-relaxed">
           Net revenue −12.4%. Largest decline from SSC after campaign end.
         </p>
@@ -133,8 +133,8 @@ export function HowItWorksSection() {
           Three steps. Fewer questionable answers.
         </h2>
         <p className="text-muted-foreground max-w-xl mb-10 leading-relaxed">
-          Connect a source, publish governed context, then ask. Average Analyst stays on the
-          approved path.
+          Connect a source, publish governed context, then ask. Evid stays on the approved
+          path.
         </p>
 
         {/* Desktop stepper */}

@@ -99,10 +99,10 @@ export function ProblemSection() {
             </div>
           </div>
 
-          {/* Average Analyst side */}
+          {/* Evid side */}
           <div className="rounded-2xl border border-primary/30 bg-card/40 p-5 sm:p-6 relative overflow-hidden">
             <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-4">
-              Average Analyst
+              Evid
             </p>
             <ul className="space-y-2 mb-5">
               {[

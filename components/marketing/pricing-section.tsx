@@ -2,6 +2,7 @@
 
 import { ArrowRight } from "lucide-react";
 import { PRICING_PLANS } from "@/components/marketing/config";
+import { StatusPill } from "@/components/marketing/status-pill";
 import { BRAND, contactMailto } from "@/lib/brand";
 
 export function PricingContactSection() {
@@ -28,7 +29,10 @@ export function PricingContactSection() {
               key={plan.id}
               className="rounded-2xl border border-border/60 bg-card/40 p-5 sm:p-6 flex flex-col"
             >
-              <h3 className="text-base font-semibold text-foreground mb-2">{plan.title}</h3>
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-base font-semibold text-foreground">{plan.title}</h3>
+                <StatusPill status={plan.status} />
+              </div>
               <p className="text-sm text-muted-foreground leading-relaxed mb-5">{plan.blurb}</p>
               <ul className="space-y-2 mb-6 flex-1">
                 {plan.points.map((point) => (

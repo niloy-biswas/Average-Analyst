@@ -2,7 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Code2, FileText, LayoutList, LineChart as LineChartIcon } from "lucide-react";
+import {
+  ArrowUp,
+  Check,
+  Code2,
+  FileText,
+  LayoutList,
+  LineChart as LineChartIcon,
+  type LucideIcon,
+} from "lucide-react";
 import {
   Bar,
   CartesianGrid,
@@ -19,22 +27,128 @@ import {
   HERO_CHART_DATA,
   HERO_CONTEXT_STEPS,
   HERO_DEMO_QUESTION,
+  HERO_LIVE_REPLY,
 } from "@/components/marketing/demo-data";
 import { usePrefersReducedMotion } from "@/components/marketing/use-reduced-motion";
+import { BRAND, contactMailto } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 type DemoTab = "answer" | "chart" | "sql" | "context";
 type Stage = "idle" | "question" | "context" | "result";
 
+const DEMO_TAB_ITEMS: Array<{
+  id: DemoTab;
+  label: string;
+  icon: LucideIcon;
+  dwellMs: number;
+}> = [
+  { id: "answer", label: "Answer", icon: FileText, dwellMs: 4500 },
+  { id: "chart", label: "Chart", icon: LineChartIcon, dwellMs: 5500 },
+  { id: "sql", label: "SQL", icon: Code2, dwellMs: 5000 },
+  { id: "context", label: "Context", icon: LayoutList, dwellMs: 4000 },
+];
+
+function useTypewriter(text: string, reduced: boolean, charsPerSec = 48) {
+  const [out, setOut] = useState("");
+
+  useEffect(() => {
+    if (reduced) {
+      setOut(text);
+      return;
+    }
+    setOut("");
+    let i = 0;
+    const stepMs = Math.max(12, Math.round(1000 / charsPerSec));
+    const id = window.setInterval(() => {
+      i += 1;
+      if (i >= text.length) {
+        setOut(text);
+        window.clearInterval(id);
+        return;
+      }
+      setOut(text.slice(0, i));
+    }, stepMs);
+    return () => window.clearInterval(id);
+  }, [text, reduced, charsPerSec]);
+
+  return out;
+}
+
+function StreamingText({
+  text,
+  reduced,
+  charsPerSec = 48,
+  className,
+  as: Tag = "p",
+}: {
+  text: string;
+  reduced: boolean;
+  charsPerSec?: number;
+  className?: string;
+  as?: "p" | "pre" | "span";
+}) {
+  const out = useTypewriter(text, reduced, charsPerSec);
+  const done = out.length >= text.length;
+
+  return (
+    <Tag className={className} aria-label={text}>
+      {out}
+      {!reduced && !done && (
+        <span
+          className="inline-block w-[0.5ch] h-[1em] align-[-0.1em] bg-primary/70 animate-pulse ml-0.5"
+          aria-hidden
+        />
+      )}
+    </Tag>
+  );
+}
+
+function ContextTagsStream({ tags, reduced }: { tags: readonly string[]; reduced: boolean }) {
+  const [visible, setVisible] = useState(0);
+
+  useEffect(() => {
+    if (reduced) {
+      setVisible(tags.length);
+      return;
+    }
+    setVisible(0);
+    const timers = tags.map((_, i) =>
+      window.setTimeout(() => setVisible(i + 1), 280 + i * 520)
+    );
+    return () => timers.forEach((id) => window.clearTimeout(id));
+  }, [reduced, tags]);
+
+  return (
+    <ul className="h-full space-y-2 overflow-auto">
+      {tags.slice(0, visible).map((tag) => (
+        <motion.li
+          key={tag}
+          initial={reduced ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+          className="text-xs rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-foreground/90"
+        >
+          {tag}
+        </motion.li>
+      ))}
+    </ul>
+  );
+}
+
 export function HeroDemo() {
   const reduced = usePrefersReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
+  const liveEndRef = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
   const [stage, setStage] = useState<Stage>("idle");
   const [contextDone, setContextDone] = useState(0);
   const [tab, setTab] = useState<DemoTab>("answer");
   const [metric, setMetric] = useState(0);
   const [chartReady, setChartReady] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [liveUserMessage, setLiveUserMessage] = useState<string | null>(null);
+
+  const activeTab = DEMO_TAB_ITEMS.find((t) => t.id === tab) ?? DEMO_TAB_ITEMS[0];
 
   useEffect(() => {
     const el = rootRef.current;
@@ -64,80 +178,97 @@ export function HeroDemo() {
     let cancelled = false;
     const timers: number[] = [];
 
-    const run = () => {
-      setStage("idle");
-      setContextDone(0);
-      setMetric(0);
-      setChartReady(false);
-      setTab("answer");
+    setStage("idle");
+    setContextDone(0);
+    setMetric(0);
+    setChartReady(false);
+    setTab("answer");
 
+    timers.push(
+      window.setTimeout(() => {
+        if (!cancelled) setStage("question");
+      }, 120)
+    );
+
+    timers.push(
+      window.setTimeout(() => {
+        if (!cancelled) setStage("context");
+      }, 700)
+    );
+
+    HERO_CONTEXT_STEPS.forEach((_, i) => {
       timers.push(
         window.setTimeout(() => {
-          if (!cancelled) setStage("question");
-        }, 120)
+          if (!cancelled) setContextDone(i + 1);
+        }, 950 + i * 380)
       );
+    });
 
-      timers.push(
-        window.setTimeout(() => {
-          if (!cancelled) setStage("context");
-        }, 700)
-      );
+    const resultAt = 950 + HERO_CONTEXT_STEPS.length * 380 + 200;
+    timers.push(
+      window.setTimeout(() => {
+        if (cancelled) return;
+        setStage("result");
+        setChartReady(true);
+      }, resultAt)
+    );
 
-      HERO_CONTEXT_STEPS.forEach((_, i) => {
-        timers.push(
-          window.setTimeout(() => {
-            if (!cancelled) setContextDone(i + 1);
-          }, 950 + i * 380)
-        );
-      });
-
-      const resultAt = 950 + HERO_CONTEXT_STEPS.length * 380 + 200;
-      timers.push(
-        window.setTimeout(() => {
+    timers.push(
+      window.setTimeout(() => {
+        if (cancelled) return;
+        const target = HERO_ANSWER.metricValue;
+        const start = performance.now();
+        const duration = 900;
+        const tick = (now: number) => {
           if (cancelled) return;
-          setStage("result");
-          setChartReady(true);
-        }, resultAt)
-      );
+          const t = Math.min(1, (now - start) / duration);
+          const eased = 1 - Math.pow(1 - t, 3);
+          setMetric(Number((target * eased).toFixed(2)));
+          if (t < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }, resultAt + 50)
+    );
 
-      // Count-up metric
-      timers.push(
-        window.setTimeout(() => {
-          if (cancelled) return;
-          const target = HERO_ANSWER.metricValue;
-          const start = performance.now();
-          const duration = 900;
-          const tick = (now: number) => {
-            if (cancelled) return;
-            const t = Math.min(1, (now - start) / duration);
-            const eased = 1 - Math.pow(1 - t, 3);
-            setMetric(Number((target * eased).toFixed(2)));
-            if (t < 1) requestAnimationFrame(tick);
-          };
-          requestAnimationFrame(tick);
-        }, resultAt + 50)
-      );
-    };
-
-    run();
     return () => {
       cancelled = true;
       timers.forEach((id) => window.clearTimeout(id));
     };
   }, [inView, reduced]);
 
-  const tabs: Array<{ id: DemoTab; label: string; icon: typeof FileText }> = [
-    { id: "answer", label: "Answer", icon: FileText },
-    { id: "chart", label: "Chart", icon: LineChartIcon },
-    { id: "sql", label: "SQL", icon: Code2 },
-    { id: "context", label: "Context", icon: LayoutList },
-  ];
+  useEffect(() => {
+    if (!liveUserMessage) return;
+    liveEndRef.current?.scrollIntoView({
+      behavior: reduced ? "auto" : "smooth",
+      block: "nearest",
+    });
+  }, [liveUserMessage, reduced]);
+
+  useEffect(() => {
+    if (stage !== "result" || !inView) return;
+
+    const timer = window.setTimeout(() => {
+      setTab((current) => {
+        const i = DEMO_TAB_ITEMS.findIndex((t) => t.id === current);
+        return DEMO_TAB_ITEMS[(i + 1) % DEMO_TAB_ITEMS.length].id;
+      });
+    }, activeTab.dwellMs);
+
+    return () => window.clearTimeout(timer);
+  }, [stage, tab, inView, activeTab.dwellMs]);
+
+  const sendLiveMessage = () => {
+    const text = draft.trim();
+    if (!text) return;
+    setLiveUserMessage(text);
+    setDraft("");
+  };
 
   return (
     <div
       ref={rootRef}
       className="relative rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm overflow-hidden shadow-2xl"
-      aria-label="Product demonstration of Average Analyst answering a revenue question"
+      aria-label="Product demonstration of Evid answering a revenue question"
     >
       <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-primary/60 to-transparent pointer-events-none" />
 
@@ -151,7 +282,6 @@ export function HeroDemo() {
       </div>
 
       <div className="p-4 sm:p-5 space-y-4 min-h-[420px] sm:min-h-[460px]">
-        {/* User question */}
         <AnimatePresence>
           {(stage === "question" || stage === "context" || stage === "result") && (
             <motion.div
@@ -167,7 +297,6 @@ export function HeroDemo() {
           )}
         </AnimatePresence>
 
-        {/* Context checks */}
         <AnimatePresence>
           {(stage === "context" || stage === "result") && (
             <motion.ul
@@ -177,8 +306,8 @@ export function HeroDemo() {
             >
               {HERO_CONTEXT_STEPS.map((step, i) => {
                 const done = contextDone > i || stage === "result";
-                const active = contextDone === i && stage === "context";
-                if (!done && !active) return null;
+                const stepActive = contextDone === i && stage === "context";
+                if (!done && !stepActive) return null;
                 return (
                   <motion.li
                     key={step}
@@ -204,7 +333,6 @@ export function HeroDemo() {
           )}
         </AnimatePresence>
 
-        {/* Result panel */}
         <AnimatePresence>
           {stage === "result" && (
             <motion.div
@@ -213,39 +341,57 @@ export function HeroDemo() {
               transition={{ duration: 0.35 }}
               className="rounded-xl border border-border/60 bg-background/60 overflow-hidden"
             >
-              <div className="px-3 sm:px-4 pt-3 flex items-center justify-between gap-2">
+              <div className="px-3 sm:px-4 pt-3 flex flex-col gap-2">
                 <p className="text-[11px] font-medium text-primary tracking-wide">
                   {HERO_ANSWER.foundLabel}
                 </p>
                 <div
-                  className="flex gap-1 overflow-x-auto"
+                  className="flex items-end gap-4 overflow-x-auto border-b border-border/40"
                   role="tablist"
                   aria-label="Inspect answer"
                 >
-                  {tabs.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={tab === t.id}
-                      onClick={() => setTab(t.id)}
-                      className={cn(
-                        "inline-flex items-center gap-1 shrink-0 rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
-                        tab === t.id
-                          ? "bg-primary/15 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      )}
-                    >
-                      <t.icon className="h-3 w-3" />
-                      {t.label}
-                    </button>
-                  ))}
+                  {DEMO_TAB_ITEMS.map((t) => {
+                    const selected = tab === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={selected}
+                        onClick={() => setTab(t.id)}
+                        className={cn(
+                          "relative pb-2 inline-flex items-center gap-1.5 shrink-0 text-[11px] font-medium leading-none outline-none transition-colors",
+                          selected
+                            ? "text-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <t.icon className="h-3 w-3 shrink-0" aria-hidden />
+                        {t.label}
+                        {selected && (
+                          <motion.span
+                            key={`${t.id}-progress`}
+                            className="absolute inset-x-0 bottom-0 h-0.5 bg-primary"
+                            initial={{ scaleX: reduced ? 1 : 0 }}
+                            animate={{ scaleX: 1 }}
+                            transition={
+                              reduced
+                                ? { duration: 0 }
+                                : { duration: t.dwellMs / 1000, ease: "linear" }
+                            }
+                            style={{ transformOrigin: "left center" }}
+                            aria-hidden
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div className="p-3 sm:p-4" role="tabpanel">
+              <div className="p-3 sm:p-4 h-[13.5rem] sm:h-[15.5rem]" role="tabpanel">
                 {tab === "answer" && (
-                  <div className="space-y-3">
+                  <div className="h-full flex flex-col justify-center space-y-3">
                     <div className="flex flex-wrap items-end gap-3">
                       <div>
                         <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
@@ -260,15 +406,18 @@ export function HeroDemo() {
                         {HERO_ANSWER.changePct}%
                       </p>
                     </div>
-                    <p className="text-sm text-foreground leading-relaxed">
-                      {HERO_ANSWER.headline} {HERO_ANSWER.detail}
-                    </p>
+                    <StreamingText
+                      text={`${HERO_ANSWER.headline} ${HERO_ANSWER.detail}`}
+                      reduced={reduced}
+                      charsPerSec={42}
+                      className="text-sm text-foreground leading-relaxed"
+                    />
                   </div>
                 )}
 
                 {tab === "chart" && (
-                  <div>
-                    <div className="h-48 sm:h-56 w-full">
+                  <div className="h-full">
+                    <div className="h-full w-full">
                       {chartReady && (
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart
@@ -349,37 +498,83 @@ export function HeroDemo() {
                 )}
 
                 {tab === "sql" && (
-                  <pre className="text-[11px] sm:text-xs font-mono text-muted-foreground overflow-x-auto leading-relaxed whitespace-pre">
-                    {HERO_ANSWER.sql}
-                  </pre>
+                  <StreamingText
+                    as="pre"
+                    text={HERO_ANSWER.sql}
+                    reduced={reduced}
+                    charsPerSec={72}
+                    className="h-full text-[11px] sm:text-xs font-mono text-muted-foreground overflow-auto leading-relaxed whitespace-pre"
+                  />
                 )}
 
                 {tab === "context" && (
-                  <ul className="space-y-2">
-                    {HERO_ANSWER.contextTags.map((tag) => (
-                      <li
-                        key={tag}
-                        className="text-xs rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-foreground/90"
-                      >
-                        {tag}
-                      </li>
-                    ))}
-                  </ul>
+                  <ContextTagsStream tags={HERO_ANSWER.contextTags} reduced={reduced} />
                 )}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Fake input */}
-        <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2.5 flex items-center gap-2">
-          <span className="text-sm text-muted-foreground/70 flex-1 truncate">
-            Ask Average Analyst…
-          </span>
-          <span className="h-7 px-2.5 rounded-md bg-primary/80 text-primary-foreground text-xs font-medium inline-flex items-center">
-            Send
-          </span>
-        </div>
+        <AnimatePresence>
+          {liveUserMessage && (
+            <motion.div
+              initial={reduced ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-3"
+            >
+              <div className="flex justify-end">
+                <div className="max-w-[90%] rounded-2xl rounded-br-md bg-primary text-primary-foreground px-4 py-2.5 text-sm leading-relaxed">
+                  {liveUserMessage}
+                </div>
+              </div>
+              <p className="text-sm text-foreground leading-relaxed px-0.5">
+                {HERO_LIVE_REPLY.prefix}{" "}
+                <a
+                  href={contactMailto(HERO_LIVE_REPLY.demoSubject)}
+                  className="text-primary font-medium hover:underline underline-offset-2"
+                >
+                  {HERO_LIVE_REPLY.demoLabel}
+                </a>
+                .
+              </p>
+              <div ref={liveEndRef} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <form
+          className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 flex items-center gap-2 focus-within:border-primary/50 transition-colors"
+          onSubmit={(e) => {
+            e.preventDefault();
+            sendLiveMessage();
+          }}
+        >
+          <label htmlFor="hero-demo-ask" className="sr-only">
+            Ask {BRAND.name}
+          </label>
+          <input
+            id="hero-demo-ask"
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={`Ask ${BRAND.name}…`}
+            autoComplete="off"
+            className="flex-1 min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/70 outline-none"
+          />
+          <button
+            type="submit"
+            disabled={!draft.trim()}
+            aria-label="Send message"
+            className={cn(
+              "h-8 w-8 rounded-md inline-flex items-center justify-center shrink-0 transition-colors",
+              draft.trim()
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "bg-muted text-muted-foreground cursor-not-allowed"
+            )}
+          >
+            <ArrowUp className="h-4 w-4" />
+          </button>
+        </form>
       </div>
     </div>
   );

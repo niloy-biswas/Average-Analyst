@@ -1,13 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
 import { BRAND, contactMailto, marketingPrimaryCta } from "@/lib/brand";
 import { usePrefersReducedMotion } from "@/components/marketing/use-reduced-motion";
+import { PrimaryCta } from "@/components/marketing/primary-cta";
 
 export function FinalCta({ isLoggedIn }: { isLoggedIn: boolean }) {
-  const { href, label } = marketingPrimaryCta(isLoggedIn);
+  const primary = marketingPrimaryCta(isLoggedIn);
   const reduced = usePrefersReducedMotion();
 
   return (
@@ -36,16 +35,13 @@ export function FinalCta({ isLoggedIn }: { isLoggedIn: boolean }) {
           Your data already knows the answer.
         </h2>
         <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-          Ask Average Analyst, or run one on your own infrastructure.
+          Ask Evid, or run it on your own infrastructure.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href={href}
+          <PrimaryCta
+            {...primary}
             className="inline-flex items-center gap-2 h-10 px-5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
-          >
-            {label}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          />
           <a
             href={BRAND.githubUrl}
             target="_blank"
@@ -55,7 +51,7 @@ export function FinalCta({ isLoggedIn }: { isLoggedIn: boolean }) {
             View on GitHub
           </a>
           <a
-            href={contactMailto("Average Analyst implementation")}
+            href={contactMailto("Evid implementation")}
             className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
           >
             Contact for implementation
